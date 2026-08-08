@@ -10,7 +10,11 @@ import type {
   MedicalProfile, 
   Hospital,
   DialogueMessage,
-  UserSettings
+  UserSettings,
+  EmergencySession,
+  ConversationIntelligence,
+  VoiceGender,
+  VoicePersonality
 } from '../types';
 import { apiService } from '../services/api';
 import type { AgoraConnectionStatus } from '../services/agoraVoice';
@@ -773,7 +777,7 @@ ${emergencySession.ambulance_called || updatedFacts.ambulance_called ? 'Called' 
         emergency_type: (nvidiaResult as any).emergency_type || triageResult.category,
         confidence: (nvidiaResult as any).confidence || 0.98,
         severity: (nvidiaResult as any).severity || triageResult.severity,
-        suggested_actions: (nvidiaResult as any).suggested_actions || triageResult.steps.map(s => s.title),
+        suggested_actions: (nvidiaResult as any).suggested_actions || triageResult.steps.map((s: any) => s.title),
         call_ambulance: (nvidiaResult as any).call_ambulance ?? true,
         call_police: (nvidiaResult as any).call_police ?? false,
         cpr_required: (nvidiaResult as any).cpr_required ?? (triageResult.category.includes('Cardiac')),
@@ -1035,7 +1039,9 @@ ${emergencySession.ambulance_called || updatedFacts.ambulance_called ? 'Called' 
         updateEmergencySession,
         conversationIntelligence,
         voiceGender,
-        setVoiceGender
+        setVoiceGender,
+        voicePersonality,
+        setVoicePersonality
       }}
     >
 

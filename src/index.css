@@ -368,3 +368,204 @@ button:active, [role="button"]:active {
   transition: transform 0.08s ease;
 }
 
+/* ════════════════════════════════════════════════════════════════
+   PREMIUM UPGRADE — New Animation System
+   ════════════════════════════════════════════════════════════════ */
+
+/* ─── Streaming Text Cursor ─── */
+@keyframes cursor-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.streaming-cursor::after {
+  content: '▊';
+  display: inline-block;
+  margin-left: 2px;
+  animation: cursor-blink 0.8s step-end infinite;
+  color: #00E5FF;
+  font-size: 0.85em;
+  vertical-align: baseline;
+}
+
+/* ─── Neural Thinking Dots ─── */
+@keyframes neural-dot-1 {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.4; }
+  50% { transform: translateY(-8px) scale(1.3); opacity: 1; }
+}
+@keyframes neural-dot-2 {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.4; }
+  50% { transform: translateY(-8px) scale(1.3); opacity: 1; }
+}
+@keyframes neural-dot-3 {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.4; }
+  50% { transform: translateY(-8px) scale(1.3); opacity: 1; }
+}
+.neural-dot-1 { animation: neural-dot-1 1.2s ease-in-out infinite 0s; }
+.neural-dot-2 { animation: neural-dot-2 1.2s ease-in-out infinite 0.2s; }
+.neural-dot-3 { animation: neural-dot-3 1.2s ease-in-out infinite 0.4s; }
+
+/* ─── Neural Network Line Draw ─── */
+@keyframes neural-line-draw {
+  0% { stroke-dashoffset: 100; opacity: 0; }
+  30% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0.6; }
+}
+.neural-line {
+  stroke-dasharray: 100;
+  animation: neural-line-draw 2s ease-in-out infinite;
+}
+
+/* ─── Orb Frequency Bar ─── */
+@keyframes freq-bar {
+  0%, 100% { transform: scaleY(0.2); }
+  50% { transform: scaleY(1); }
+}
+.freq-bar { transform-origin: bottom; animation: freq-bar 0.6s ease-in-out infinite; }
+.freq-bar:nth-child(1)  { animation-delay: 0.00s; }
+.freq-bar:nth-child(2)  { animation-delay: 0.05s; }
+.freq-bar:nth-child(3)  { animation-delay: 0.10s; }
+.freq-bar:nth-child(4)  { animation-delay: 0.15s; }
+.freq-bar:nth-child(5)  { animation-delay: 0.20s; }
+.freq-bar:nth-child(6)  { animation-delay: 0.25s; }
+.freq-bar:nth-child(7)  { animation-delay: 0.20s; }
+.freq-bar:nth-child(8)  { animation-delay: 0.15s; }
+.freq-bar:nth-child(9)  { animation-delay: 0.10s; }
+.freq-bar:nth-child(10) { animation-delay: 0.05s; }
+.freq-bar:nth-child(11) { animation-delay: 0.00s; }
+.freq-bar:nth-child(12) { animation-delay: 0.05s; }
+
+/* ─── Float Bob (subtle idle float) ─── */
+@keyframes float-bob {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+.animate-float-bob { animation: float-bob 4s ease-in-out infinite; }
+
+/* ─── State Glow Pulse ─── */
+@keyframes state-glow-listening {
+  0%, 100% { box-shadow: 0 0 20px 4px rgba(16,185,129,0.3), 0 0 0px rgba(16,185,129,0.1); }
+  50% { box-shadow: 0 0 40px 14px rgba(16,185,129,0.5), 0 0 80px 30px rgba(16,185,129,0.2); }
+}
+@keyframes state-glow-thinking {
+  0%, 100% { box-shadow: 0 0 20px 4px rgba(251,191,36,0.3); }
+  50% { box-shadow: 0 0 45px 16px rgba(251,191,36,0.6), 0 0 90px 35px rgba(251,191,36,0.2); }
+}
+@keyframes state-glow-speaking {
+  0%, 100% { box-shadow: 0 0 20px 4px rgba(168,85,247,0.35); }
+  50% { box-shadow: 0 0 50px 18px rgba(168,85,247,0.6), 0 0 100px 40px rgba(168,85,247,0.2); }
+}
+.glow-listening { animation: state-glow-listening 1.8s ease-in-out infinite; }
+.glow-thinking  { animation: state-glow-thinking 1.4s ease-in-out infinite; }
+.glow-speaking  { animation: state-glow-speaking 1.2s ease-in-out infinite; }
+
+/* ─── Chat Bubble float ─── */
+@keyframes bubble-idle-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-2px); }
+}
+.bubble-ai { animation: bubble-idle-float 5s ease-in-out infinite; }
+
+/* ─── Cursor glow dot ─── */
+.cursor-glow {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  transition: width 0.2s ease, height 0.2s ease, background 0.3s ease;
+}
+
+/* ─── Particle orbit ─── */
+@keyframes orbit-particle {
+  from { transform: rotate(0deg) translateX(60px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(60px) rotate(-360deg); }
+}
+.orbit-particle { animation: orbit-particle 3s linear infinite; }
+
+/* ─── Energy wave expand ─── */
+@keyframes energy-wave {
+  0%   { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.energy-wave {
+  position: absolute; border-radius: 50%; pointer-events: none;
+  animation: energy-wave 2s ease-out infinite;
+  will-change: transform, opacity;
+}
+.energy-wave:nth-child(2) { animation-delay: 0.66s; }
+.energy-wave:nth-child(3) { animation-delay: 1.32s; }
+
+/* ─── Thinking Ring Spin ─── */
+@keyframes thinking-ring {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.thinking-ring-1 { animation: thinking-ring 2s linear infinite; }
+.thinking-ring-2 { animation: thinking-ring 3s linear infinite reverse; }
+.thinking-ring-3 { animation: thinking-ring 4s linear infinite; }
+
+/* ─── Token stream flicker ─── */
+@keyframes token-flicker {
+  0%, 90%, 100% { opacity: 1; }
+  95% { opacity: 0.3; }
+}
+.token-flicker { animation: token-flicker 0.15s step-end infinite; }
+
+/* ─── Premium message bubble shadow ─── */
+.msg-bubble-ai {
+  box-shadow:
+    0 4px 24px rgba(0,0,0,0.35),
+    0 0 0 1px rgba(255,255,255,0.06),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.msg-bubble-user {
+  box-shadow:
+    0 4px 24px rgba(0,229,255,0.2),
+    0 0 20px rgba(0,229,255,0.1);
+}
+
+/* ─── Glassmorphism premium panel ─── */
+.premium-glass {
+  background: rgba(13, 19, 36, 0.7);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.09);
+  box-shadow:
+    0 32px 80px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 0 -1px 0 rgba(0,0,0,0.3);
+}
+
+/* ─── Animated gradient border ─── */
+@keyframes border-glow-cycle {
+  0%   { border-color: rgba(0,229,255,0.4); box-shadow: 0 0 15px rgba(0,229,255,0.15); }
+  33%  { border-color: rgba(124,77,255,0.4); box-shadow: 0 0 15px rgba(124,77,255,0.15); }
+  66%  { border-color: rgba(217,70,239,0.4); box-shadow: 0 0 15px rgba(217,70,239,0.15); }
+  100% { border-color: rgba(0,229,255,0.4); box-shadow: 0 0 15px rgba(0,229,255,0.15); }
+}
+.animate-border-glow { animation: border-glow-cycle 4s ease-in-out infinite; }
+
+/* ─── Ripple click ─── */
+@keyframes ripple-out {
+  0%   { transform: scale(0); opacity: 0.6; }
+  100% { transform: scale(4); opacity: 0; }
+}
+.ripple {
+  position: absolute; border-radius: 50%;
+  pointer-events: none;
+  animation: ripple-out 0.6s ease-out forwards;
+}
+
+/* ─── Prefers-Reduced-Motion: kill all NEW animations ─── */
+@media (prefers-reduced-motion: reduce) {
+  .streaming-cursor::after,
+  .neural-dot-1, .neural-dot-2, .neural-dot-3,
+  .freq-bar, .animate-float-bob,
+  .glow-listening, .glow-thinking, .glow-speaking,
+  .bubble-ai, .orbit-particle, .energy-wave,
+  .thinking-ring-1, .thinking-ring-2, .thinking-ring-3,
+  .cursor-glow, .animate-border-glow {
+    animation: none !important;
+    transition: none !important;
+  }
+}

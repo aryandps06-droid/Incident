@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useEmergency } from '../../context/EmergencyContext';
 import { LandingScreen } from './LandingScreen';
 import { VoiceWaveform } from '../home/VoiceWaveform';
+import { StreamingText } from '../common/StreamingText';
+import { AIThinkingAnimation } from '../common/AIThinkingAnimation';
 import { apiService } from '../../services/api';
 import { 
   User, 
@@ -58,7 +60,10 @@ export const UnifiedStage: React.FC = () => {
     stopVoice,
     explainableReasoning,
     isBackendOnline,
-    emergencySession
+    emergencySession,
+    contacts,
+    invokedTools,
+    handoffReport
   } = useEmergency();
 
   const [inputSpeech, setInputSpeech] = useState('');
@@ -460,6 +465,31 @@ Speak like a calm, warm, human emergency dispatcher with natural pauses.`
         <LandingScreen />
       </div>
 
+      {/* DYNAMIC AMBIENT STATE LIGHTING (Next-Gen UX) */}
+      <AnimatePresence>
+        {screenState !== 'landing' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.5 }}
+            className={`absolute inset-0 z-10 pointer-events-none mix-blend-screen transition-colors duration-1000 ${
+              isAnalyzing ? 'bg-purple-900/10' :
+              (isUserSpeaking || isListening) ? 'bg-blue-900/10' :
+              (isAISpeaking || isSpeaking) ? 'bg-cyan-900/10' :
+              'bg-transparent'
+            }`}
+          >
+            <div className={`absolute inset-0 transition-opacity duration-1000 ${isAnalyzing ? 'opacity-100' : 'opacity-0'}`} 
+                 style={{ background: 'radial-gradient(circle at 50% 50%, rgba(168,85,247,0.15) 0%, transparent 60%)' }} />
+            <div className={`absolute inset-0 transition-opacity duration-1000 ${(isUserSpeaking || isListening) ? 'opacity-100' : 'opacity-0'}`} 
+                 style={{ background: 'radial-gradient(circle at 50% 50%, rgba(59,130,246,0.15) 0%, transparent 60%)' }} />
+            <div className={`absolute inset-0 transition-opacity duration-1000 ${(isAISpeaking || isSpeaking) ? 'opacity-100' : 'opacity-0'}`} 
+                 style={{ background: 'radial-gradient(circle at 50% 50%, rgba(0,229,255,0.15) 0%, transparent 60%)' }} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* OVERLAY CONVERSATION STAGE: Appears seamlessly when mic is pressed / session starts */}
       <AnimatePresence>
         {screenState !== 'landing' && (
@@ -563,39 +593,47 @@ Speak like a calm, warm, human emergency dispatcher with natural pauses.`
                   />
                 </div>
 
-                {/* Floating Glass Message Bubbles Container (Section 9: AI slides from left, User slides from right) */}
-                <div className="space-y-3.5 max-h-[44vh] overflow-y-auto pr-2 custom-scrollbar flex flex-col justify-end">
-                  {dialogueMessages.map((msg) => (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, x: msg.sender === 'USER' ? 25 : -25, scale: 0.97 }}
-                      animate={{ opacity: 1, x: 0, scale: 1 }}
-                      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                      className={`flex gap-3 max-w-xl ${msg.sender === 'USER' ? 'ml-auto flex-row-reverse' : ''}`}
-                    >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
-                        msg.sender === 'ECHO_AI' 
-                          ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-300 shadow-[0_0_12px_rgba(0,229,255,0.3)]' 
-                          : 'bg-white/10 border-white/20 text-white'
-                      }`}>
-                        {msg.sender === 'ECHO_AI' ? <Shield className="w-4 h-4 text-cyan-400" /> : <User className="w-4 h-4" />}
-                      </div>
-
-                      <div className={`p-4 rounded-[28px] text-sm leading-relaxed space-y-1 backdrop-blur-3xl shadow-card-soft ${
-                        msg.sender === 'ECHO_AI'
-                          ? 'bg-[#070C1E]/90 border border-cyan-500/30 text-slate-100 rounded-tl-sm shadow-[0_15px_45px_rgba(0,0,0,0.6)]'
-                          : 'bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 text-white font-medium shadow-[0_15px_45px_rgba(0,229,255,0.25)] rounded-tr-sm'
-                      }`}>
-                        <div className="flex items-center justify-between text-[10px] font-mono opacity-70 gap-4">
-                          <span className="font-bold flex items-center gap-1">
-                            {msg.sender === 'ECHO_AI' ? 'EchoAid Dispatcher' : 'You'}
-                          </span>
-                          <span>{msg.timestamp}</span>
+                {/* Floating Glass Message Bubbles Container */}
+                <div className="space-y-3.5 max-h-[44vh] overflow-y-auto pr-2 custom-scrollbar flex flex-col justify-end pb-4">
+                  <AnimatePresence initial={false}>
+                    {dialogueMessages.map((msg) => (
+                      <motion.div
+                        key={msg.id}
+                        initial={{ opacity: 0, x: msg.sender === 'USER' ? 25 : -25, scale: 0.95, y: 15 }}
+                        animate={{ opacity: 1, x: 0, scale: 1, y: 0 }}
+                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} // Spring physics
+                        className={`flex gap-3 max-w-xl ${msg.sender === 'USER' ? 'ml-auto flex-row-reverse' : ''}`}
+                      >
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                          msg.sender === 'ECHO_AI' 
+                            ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-300 shadow-[0_0_12px_rgba(0,229,255,0.3)]' 
+                            : 'bg-white/10 border-white/20 text-white'
+                        }`}>
+                          {msg.sender === 'ECHO_AI' ? <Shield className="w-4 h-4 text-cyan-400" /> : <User className="w-4 h-4" />}
                         </div>
-                        <div className="font-sans text-sm">{msg.text}</div>
-                      </div>
-                    </motion.div>
-                  ))}
+
+                        <div className={`p-4 rounded-[28px] text-sm leading-relaxed space-y-1 backdrop-blur-3xl shadow-card-soft ${
+                          msg.sender === 'ECHO_AI'
+                            ? 'bg-[#070C1E]/90 border border-cyan-500/30 text-slate-100 rounded-tl-sm shadow-[0_15px_45px_rgba(0,0,0,0.6)] bubble-ai'
+                            : 'bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 text-white font-medium shadow-[0_15px_45px_rgba(0,229,255,0.25)] rounded-tr-sm msg-bubble-user'
+                        }`}>
+                          <div className="flex items-center justify-between text-[10px] font-mono opacity-70 gap-4">
+                            <span className="font-bold flex items-center gap-1">
+                              {msg.sender === 'ECHO_AI' ? 'EchoAid Dispatcher' : 'You'}
+                            </span>
+                            <span>{msg.timestamp}</span>
+                          </div>
+                          <div className="font-sans text-sm">
+                            {msg.sender === 'ECHO_AI' ? (
+                              <StreamingText text={msg.text} speed={15} />
+                            ) : (
+                              msg.text
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
 
                   {/* Word-by-word interim transcript */}
                   {interimTranscript && (
@@ -604,17 +642,27 @@ Speak like a calm, warm, human emergency dispatcher with natural pauses.`
                       animate={{ opacity: 1, x: 0 }}
                       className="flex gap-3 max-w-xl ml-auto flex-row-reverse"
                     >
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border bg-cyan-500/20 border-cyan-400 text-cyan-300">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border bg-blue-500/20 border-blue-400 text-blue-300">
                         <Mic className="w-4 h-4 animate-pulse" />
                       </div>
-                      <div className="p-4 rounded-[28px] text-sm leading-relaxed bg-cyan-950/70 border border-cyan-400/50 text-cyan-200 italic font-sans backdrop-blur-3xl">
-                        <span className="text-[10px] font-mono text-cyan-400 uppercase block font-bold mb-1">Listening…</span>
+                      <div className="p-4 rounded-[28px] text-sm leading-relaxed bg-blue-950/70 border border-blue-400/50 text-blue-200 italic font-sans backdrop-blur-3xl">
+                        <span className="text-[10px] font-mono text-blue-400 uppercase block font-bold mb-1">Listening…</span>
                         "{interimTranscript}"
                       </div>
                     </motion.div>
                   )}
 
-                  <div ref={messagesEndRef} />
+                  {/* AI Thinking State */}
+                  {isAnalyzing && (
+                    <div className="flex gap-3 max-w-xl">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border bg-purple-500/20 border-purple-400/50 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.3)]">
+                        <Shield className="w-4 h-4 text-purple-400" />
+                      </div>
+                      <AIThinkingAnimation />
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} className="h-2" />
                 </div>
 
                 {/* Action Buttons + Input Composer — mobile sticky */}
