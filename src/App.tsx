@@ -7,14 +7,11 @@ import { MedicalIDModal } from './components/modals/MedicalIDModal';
 import { ContactsModal } from './components/modals/ContactsModal';
 import { CPRModal } from './components/modals/CPRModal';
 
-import { CursorGlow } from './components/common/CursorGlow';
-
 export function App() {
   const [splashDone, setSplashDone] = useState(false);
 
   return (
     <>
-      <CursorGlow />
       <AnimatePresence>
         {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
       </AnimatePresence>
