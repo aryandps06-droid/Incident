@@ -9,9 +9,11 @@ import os
 import uuid
 import base64
 import requests
+import traceback
 from datetime import datetime
 from dotenv import load_dotenv
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 app = FastAPI(
     title="EchoAid X Neural Engine API",
@@ -32,6 +34,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def catch_exceptions_middleware(request: Request, call_next):
+    try:
+        required_vars = [
+            "NVIDIA_API_KEY", "NVIDIA_MODEL", "NVIDIA_BASE_URL",
+            "AGORA_APP_ID", "AGORA_APP_CERTIFICATE", "AGORA_PIPELINE_ID",
+            "AGORA_CUSTOMER_ID", "AGORA_CUSTOMER_SECRET"
+        ]
+        for var in required_vars:
+            if not os.environ.get(var):
+                return JSONResponse(status_code=500, content={"success": False, "error": f"Missing {var}"})
+        
+        response = await call_next(request)
+        return response
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        })
 
 if os.environ.get("VERCEL") == "1":
     DATA_DIR = "/tmp"
@@ -258,12 +282,7 @@ def nvidia_chat(req: ChatRequest):
 @app.get("/api/health")
 def health_check():
     return {
-        "status": "ONLINE",
-        "system": "EchoAid X Neural Engine",
-        "version": "2.4.0-PROD",
-        "ai_latency_ms": 14,
-        "satellite_mesh": "ACTIVE (12 NODES)",
-        "timestamp": datetime.utcnow().isoformat()
+        "status": "healthy"
     }
 
 @app.post("/api/triage")
@@ -574,7 +593,10 @@ def generate_agora_token(channel: Optional[str] = "echoaid-room", uid: Optional[
             "channel": channel_name,
             "uid": user_uid
         }
-
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
