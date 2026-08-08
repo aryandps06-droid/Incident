@@ -8,10 +8,8 @@ import { HUDRingsLayer } from '../home/HUDRingsLayer';
 import { ECGAccentsLayer } from '../home/ECGAccentsLayer';
 import { NeuralBrainPulsesLayer } from '../home/NeuralBrainPulsesLayer';
 import { AIOrb } from '../home/AIOrb';
-import { VoiceWaveform } from '../home/VoiceWaveform';
-import { CustomCursor } from '../common/CustomCursor';
 import { BottomRightAIAssistant } from '../home/BottomRightAIAssistant';
-import { PhoneCall, MapPin, Stethoscope, Users, Lock, Mic, Shield, Sparkles } from 'lucide-react';
+import { PhoneCall, MapPin, Stethoscope, Users, Lock, Shield, Sparkles } from 'lucide-react';
 
 const LinkedinIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -24,13 +22,11 @@ export const LandingScreen: React.FC = () => {
     screenState,
     startConversation, 
     setActiveModal, 
-    isBackendOnline, 
     isListening, 
     isSpeaking, 
     isAnalyzing,
     isUserSpeaking,
     isAISpeaking,
-    agoraStatus,
     isEmergencyActive
   } = useEmergency();
 

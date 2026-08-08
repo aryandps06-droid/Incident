@@ -252,12 +252,12 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [summaryData, setSummaryData] = useState<IncidentSummary | null>(null);
+  const [summaryData] = useState<IncidentSummary | null>(null);
 
   const [locationGPS] = useState<string>('San Francisco, CA (37.7749° N, 122.4194° W)');
   const recognitionRef = useRef<any>(null);
-  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const autoResumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const silenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoResumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isEmergencyActive = screenState === 'emergency';
   const setIsEmergencyActive = (active: boolean) => {
@@ -916,19 +916,11 @@ ${emergencySession.ambulance_called || updatedFacts.ambulance_called ? 'Called' 
         };
 
         recognition.onresult = (event: any) => {
-          if (conversationState === 'SPEAKING') {
-             // Hard abort if we receive speech during AI TTS
-             try { recognition.abort(); } catch {}
-             return;
-          }
-          
           let currentInterim = '';
-          let finalFound = false;
           
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
-              finalFound = true;
               currentInterim += transcript;
             } else {
               currentInterim += transcript;

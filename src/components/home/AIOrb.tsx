@@ -122,7 +122,7 @@ export const AIOrb: React.FC = () => {
         {/* LAYER 1: OUTER ENERGY RING */}
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ duration: isUserSpeaking ? 6 : isAISpeaking ? 4 : isHovered ? 8 : 12, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: isListening ? 6 : isSpeaking ? 4 : isHovered ? 8 : 12, repeat: Infinity, ease: 'linear' }}
           className="relative w-32 h-32 lg:w-36 lg:h-36 rounded-full p-[2px] pointer-events-none flex items-center justify-center transition-all duration-700"
           style={{
             background: `conic-gradient(from 0deg, ${activeColorStr}, rgba(255,255,255,0.1), ${activeColorStr})`,
@@ -132,10 +132,10 @@ export const AIOrb: React.FC = () => {
           <div className="w-full h-full rounded-full bg-[#03050F]/80 backdrop-blur-2xl relative">
             {/* Tiny Orbiting Light Particles */}
             <div className={`w-2 h-2 rounded-full absolute -top-1 left-1/2 -translate-x-1/2 animate-pulse ${
-              isAnalyzing ? 'bg-purple-300 shadow-[0_0_12px_#A855F7]' : (isUserSpeaking || isListening) ? 'bg-blue-300 shadow-[0_0_12px_#3B82F6]' : 'bg-cyan-300 shadow-[0_0_12px_#00E5FF]'
+              isAnalyzing ? 'bg-purple-300 shadow-[0_0_12px_#A855F7]' : isListening ? 'bg-blue-300 shadow-[0_0_12px_#3B82F6]' : 'bg-cyan-300 shadow-[0_0_12px_#00E5FF]'
             }`} />
             <div className={`w-1.5 h-1.5 rounded-full absolute -bottom-1 left-1/2 -translate-x-1/2 ${
-              isAnalyzing ? 'bg-purple-300 shadow-[0_0_12px_#A855F7]' : (isUserSpeaking || isListening) ? 'bg-blue-300 shadow-[0_0_12px_#3B82F6]' : 'bg-cyan-300 shadow-[0_0_12px_#00E5FF]'
+              isAnalyzing ? 'bg-purple-300 shadow-[0_0_12px_#A855F7]' : isListening ? 'bg-blue-300 shadow-[0_0_12px_#3B82F6]' : 'bg-cyan-300 shadow-[0_0_12px_#00E5FF]'
             }`} />
           </div>
         </motion.div>
@@ -152,22 +152,22 @@ export const AIOrb: React.FC = () => {
           {/* LAYER 3: AI CORE */}
           <motion.div
             animate={{
-              scale: isAISpeaking ? [1, 1.12, 1] : isAnalyzing ? [1, 1.05, 1] : isUserSpeaking ? [1, 1.08, 1] : [1, 1.03, 1],
+              scale: isSpeaking ? [1, 1.12, 1] : isAnalyzing ? [1, 1.05, 1] : isListening ? [1, 1.08, 1] : [1, 1.03, 1],
               boxShadow: isAnalyzing
                 ? ['0 0 25px rgba(168,85,247,0.7)', '0 0 45px rgba(168,85,247,0.9)', '0 0 25px rgba(168,85,247,0.7)']
-                : isUserSpeaking || isListening
+                : isListening
                   ? ['0 0 25px rgba(59,130,246,0.7)', '0 0 45px rgba(59,130,246,0.9)', '0 0 25px rgba(59,130,246,0.7)']
-                  : isAISpeaking || isSpeaking
+                  : isSpeaking
                     ? ['0 0 20px rgba(0,229,255,0.4)', '0 0 35px rgba(0,229,255,0.7)', '0 0 20px rgba(0,229,255,0.4)']
                     : ['0 0 15px rgba(255,255,255,0.1)', '0 0 20px rgba(255,255,255,0.2)', '0 0 15px rgba(255,255,255,0.1)']
             }}
-            transition={{ duration: isAISpeaking || isUserSpeaking ? 1.2 : 3, repeat: Infinity, ease: 'easeInOut' }}
+            transition={{ duration: isSpeaking || isListening ? 1.2 : 3, repeat: Infinity, ease: 'easeInOut' }}
             className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex flex-col items-center justify-center transition-colors duration-700 ${
               isAnalyzing 
                 ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white'
-                : isUserSpeaking || isListening
+                : isListening
                   ? 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white'
-                  : isAISpeaking || isSpeaking
+                  : isSpeaking
                     ? 'bg-gradient-to-br from-cyan-400 to-teal-500 text-white'
                     : 'bg-gradient-to-br from-slate-700 to-slate-900 text-slate-300'
             }`}
@@ -180,7 +180,7 @@ export const AIOrb: React.FC = () => {
             >
               {isAnalyzing ? (
                 <BrainCircuit className="w-7 h-7 sm:w-8 sm:h-8 text-white animate-pulse drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]" />
-              ) : isAISpeaking || isSpeaking ? (
+              ) : isSpeaking ? (
                 <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-white animate-pulse drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]" />
               ) : (
                 <Mic className={`w-7 h-7 sm:w-8 sm:h-8 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] ${isActiveState ? 'text-white' : 'text-slate-400'}`} />

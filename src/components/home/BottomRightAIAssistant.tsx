@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, X, Send, Sparkles, User, Shield } from 'lucide-react';
+import { Bot, X, Send, Sparkles, Shield } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
 
 export const BottomRightAIAssistant: React.FC = () => {
