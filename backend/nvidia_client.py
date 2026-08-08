@@ -263,9 +263,10 @@ class NVIDIAClient:
                     f"Suggested Next Question by Protocol: {next_question if next_question else 'None (sufficient evidence gathered)'}\n\n"
                     "RULES:\n"
                     "1. Speak in MAXIMUM 1 short, clear, reassuring sentence followed by exactly ONE targeted question.\n"
-                    "2. If the user just answered a question (e.g. 'no' to conscious), acknowledge it and ask the NEXT logical question to gather missing facts.\n"
-                    "3. If sufficient evidence is gathered, provide immediate stabilizing instructions (like CPR) instead of asking questions.\n"
-                    "4. Respond ONLY with a valid raw JSON object matching this schema exactly:\n"
+                    "2. ALWAYS reply in the exact same language the user is speaking. If they ask to speak in Hindi, reply in Hindi text using Devanagari script.\n"
+                    "3. If the user just answered a question (e.g. 'no' to conscious), acknowledge it and ask the NEXT logical question to gather missing facts.\n"
+                    "4. If sufficient evidence is gathered, provide immediate stabilizing instructions (like CPR) instead of asking questions.\n"
+                    "5. Respond ONLY with a valid raw JSON object matching this schema exactly:\n"
                     "{\n"
                     '  "ai_guidance_text": "Spoken clear text here (max 1 sentence reassurance + 1 question)",\n'
                     '  "tone_used": "Calm | Reassuring | Urgent | Direct"\n'

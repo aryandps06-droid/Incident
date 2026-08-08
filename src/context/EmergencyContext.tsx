@@ -380,21 +380,22 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.92; // Moderate speaking speed — calm emergency dispatcher pacing
+      const isHindi = /[\u0900-\u097F]/.test(text);
+      utterance.rate = 1.0; // Standard speaking speed for snappier responses
 
       const voices = window.speechSynthesis.getVoices();
 
       if (voiceGender === 'female') {
         utterance.pitch = 1.05; // Calm, empathetic female dispatcher pitch
-        const femaleVoice = voices.find(v => 
-          (v.name.includes('Female') || v.name.includes('Zira') || v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Victoria') || v.name.includes('Google US English') || v.name.includes('Natural')) && v.lang.startsWith('en')
-        ) || voices.find(v => v.lang.startsWith('en'));
+        const femaleVoice = isHindi 
+          ? voices.find(v => v.lang.startsWith('hi') && (v.name.includes('Female') || v.name.includes('Lekha'))) || voices.find(v => v.lang.startsWith('hi'))
+          : voices.find(v => (v.name.includes('Female') || v.name.includes('Zira') || v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Victoria') || v.name.includes('Google US English') || v.name.includes('Natural')) && v.lang.startsWith('en'));
         if (femaleVoice) utterance.voice = femaleVoice;
       } else {
         utterance.pitch = 0.88; // Calm, confident male dispatcher pitch
-        const maleVoice = voices.find(v => 
-          (v.name.includes('Male') || v.name.includes('David') || v.name.includes('George') || v.name.includes('Alex') || v.name.includes('Daniel') || v.name.includes('James') || v.name.includes('Google UK English Male')) && v.lang.startsWith('en')
-        ) || voices.find(v => v.lang.startsWith('en'));
+        const maleVoice = isHindi 
+          ? voices.find(v => v.lang.startsWith('hi') && (v.name.includes('Male') || v.name.includes('Rishi'))) || voices.find(v => v.lang.startsWith('hi'))
+          : voices.find(v => (v.name.includes('Male') || v.name.includes('David') || v.name.includes('George') || v.name.includes('Alex') || v.name.includes('Daniel') || v.name.includes('James') || v.name.includes('Google UK English Male')) && v.lang.startsWith('en'));
         if (maleVoice) utterance.voice = maleVoice;
       }
 
@@ -692,14 +693,14 @@ ${emergencySession.ambulance_called || updatedFacts.ambulance_called ? 'Called' 
         { role: 'user', content: spokenText }
       ];
 
-      // Call Real FastAPI Backend Endpoints with 1.8s Maximum Latency Race (Zero Lag)
+      // Call Real FastAPI Backend Endpoints with 12s Maximum Latency Race
       const timeoutPromise = new Promise<[any, any]>((resolve) => 
         setTimeout(() => {
           resolve([
-            { ai_guidance_text: "I am tracking your emergency signal. Take a steady breath. Is the patient breathing right now?", provider: "Fast Local AI" },
-            { category: "Emergency Triage", severity: "HIGH", guidance: "Check breathing.", steps: [{ title: "Check breathing" }] }
+            { ai_guidance_text: "I am still with you, processing your information. Please stay on the line.", provider: "Fast Local AI" },
+            { category: "Emergency Triage", severity: "HIGH", guidance: "Awaiting connection.", steps: [{ title: "Monitor patient" }] }
           ]);
-        }, 1800)
+        }, 12000)
       );
 
       const [nvidiaResult, triageResult] = await Promise.race([
@@ -878,7 +879,7 @@ ${emergencySession.ambulance_called || updatedFacts.ambulance_called ? 'Called' 
                 setConversationState('PROCESSING');
                 try { recognition.stop(); } catch {}
                 handleSpokenInput(currentInterim);
-             }, 800);
+              }, 400); // Fast 400ms VAD timeout for snappier conversation
           }
         };
 
