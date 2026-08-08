@@ -1,9 +1,9 @@
 import os
 import json
-import urllib.request
-import urllib.error
 import traceback
 import difflib
+import requests
+import json
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 
@@ -241,21 +241,76 @@ class NVIDIAClient:
             timeline.append({"time": "09:43", "event": f"Triage Assessment Confirmed: {emergency_type} ({risk_score}% Risk)"})
             timeline.append({"time": "09:44", "event": "911 EMS Ambulance dispatched & Hospital Handoff Report sent"})
 
-        # 10. Voice Guidance Generation (Max 1 short sentence + exactly 1 question)
+        # 10. Voice Guidance Generation (Actual NVIDIA NIM LLM Call)
         ai_guidance_text = ""
-        reassurance = "I am right here with you." if emotion == "PANICKED" else "Thank you."
-
-        if not has_evidence and next_question:
-            ai_guidance_text = f"{reassurance} {next_question}"
-        elif has_evidence:
-            if facts["chest_pain"] or facts["collapse"]:
-                ai_guidance_text = f"{reassurance} Ambulances are dispatched. Keep the patient seated comfortably and do not let them move."
-            elif facts["bleeding"]:
-                ai_guidance_text = f"{reassurance} Apply firm direct pressure over the wound with a clean cloth."
+        tone = "Calm"
+        
+        if not self.api_key or self.api_key.startswith("your_"):
+            # Fallback if unconfigured
+            reassurance = "I am right here with you." if emotion == "PANICKED" else "Thank you."
+            if not has_evidence and next_question:
+                ai_guidance_text = f"{reassurance} {next_question}"
             else:
-                ai_guidance_text = f"{reassurance} Responders are en-route. Keep monitoring the patient until help arrives."
+                ai_guidance_text = "Emergency services are on the way. Please stay on the line."
         else:
-            ai_guidance_text = f"{reassurance} Can you describe what is happening right now?"
+            try:
+                system_instruction = (
+                    "You are EchoAid X, a calm, highly trained senior 911 / EMS emergency dispatcher. "
+                    "Your response MUST be spoken guidance tailored to the caller's emotional state.\n\n"
+                    f"Current Emergency: {emergency_type}\n"
+                    f"Facts Gathered: {json.dumps(facts)}\n"
+                    f"Missing Facts needed for triage: {json.dumps(missing_facts)}\n"
+                    f"Suggested Next Question by Protocol: {next_question if next_question else 'None (sufficient evidence gathered)'}\n\n"
+                    "RULES:\n"
+                    "1. Speak in MAXIMUM 1 short, clear, reassuring sentence followed by exactly ONE targeted question.\n"
+                    "2. If the user just answered a question (e.g. 'no' to conscious), acknowledge it and ask the NEXT logical question to gather missing facts.\n"
+                    "3. If sufficient evidence is gathered, provide immediate stabilizing instructions (like CPR) instead of asking questions.\n"
+                    "4. Respond ONLY with a valid raw JSON object matching this schema exactly:\n"
+                    "{\n"
+                    '  "ai_guidance_text": "Spoken clear text here (max 1 sentence reassurance + 1 question)",\n'
+                    '  "tone_used": "Calm | Reassuring | Urgent | Direct"\n'
+                    "}\n"
+                    "Do not include markdown codeblocks or extra text outside JSON."
+                )
+
+                # Prepare the conversation payload
+                payload_messages = [{"role": "system", "content": system_instruction}]
+                # Inject up to the last 10 messages from history to keep context fresh
+                payload_messages.extend([{"role": m.get("role"), "content": m.get("content")} for m in messages[-10:]])
+                
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                body = {
+                    "model": self.model,
+                    "messages": payload_messages,
+                    "max_tokens": 128,
+                    "temperature": 0.3
+                }
+                
+                response = requests.post(f"{self.base_url.rstrip('/')}/chat/completions", headers=headers, json=body, timeout=8.0)
+                response.raise_for_status()
+                
+                llm_data = response.json()
+                raw_content = llm_data["choices"][0]["message"]["content"]
+                
+                # Strip potential markdown blocks just in case
+                if raw_content.startswith("```json"):
+                    raw_content = raw_content.replace("```json", "", 1)
+                if raw_content.endswith("```"):
+                    raw_content = raw_content[:raw_content.rfind("```")]
+                
+                parsed = json.loads(raw_content.strip())
+                ai_guidance_text = parsed.get("ai_guidance_text", "")
+                tone = parsed.get("tone_used", "Calm")
+                
+            except Exception as e:
+                print(f"NVIDIA NIM LLM Error: {e}")
+                # Safe Fallback to hardcoded decision tree
+                reassurance = "I am here." if emotion == "PANICKED" else "Okay."
+                ai_guidance_text = f"{reassurance} {next_question}" if next_question else "Emergency services are on the way."
 
         # Anti-Repetition Check
         if AntiRepetitionEngine.is_repetitive(ai_guidance_text, self.previous_ai_texts):
