@@ -33,7 +33,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+if os.environ.get("VERCEL") == "1":
+    DATA_DIR = "/tmp"
+else:
+    DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+    
 DB_FILE = os.path.join(DATA_DIR, "db.json")
 
 def init_db():
