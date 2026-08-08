@@ -14,7 +14,8 @@ import type {
   EmergencySession,
   ConversationIntelligence,
   VoiceGender,
-  VoicePersonality
+  VoicePersonality,
+  ConversationState
 } from '../types';
 import { apiService } from '../services/api';
 import type { AgoraConnectionStatus } from '../services/agoraVoice';
@@ -110,6 +111,8 @@ interface EmergencyContextType {
   setVoiceGender: (gender: VoiceGender) => void;
   voicePersonality: VoicePersonality;
   setVoicePersonality: (personality: VoicePersonality) => void;
+  conversationState: ConversationState;
+  setConversationState: (state: ConversationState) => void;
 }
 
 const EmergencyContext = createContext<EmergencyContextType | undefined>(undefined);
@@ -214,10 +217,20 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     { time: '09:41', event: 'Caller connected to EchoAid AI Emergency Gateway' }
   ]);
 
-  const [isListening, setIsListening] = useState<boolean>(false);
+  const [conversationState, setConversationState] = useState<ConversationState>('IDLE');
+  
+  // Derived state to avoid breaking old UI components, though new UX will use conversationState
+  const isListening = conversationState === 'LISTENING';
+  const isAnalyzing = conversationState === 'PROCESSING' || conversationState === 'GENERATING';
+  const isSpeaking = conversationState === 'SPEAKING';
+  
+  // Keep dummy setters so interface matches, but they won't do much (we'll drive everything by conversationState)
+  const setIsListening = (val: boolean) => val ? setConversationState('LISTENING') : setConversationState('IDLE');
+  const setIsSpeaking = (val: boolean) => val ? setConversationState('SPEAKING') : setConversationState('IDLE');
+  const setIsAnalyzing = (val: boolean) => val ? setConversationState('PROCESSING') : setConversationState('IDLE');
+
   const [interimTranscript, setInterimTranscript] = useState<string>('');
-  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
-  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [isTalking, setIsTalking] = useState<boolean>(false);
   const [isVoiceActive, setIsVoiceActive] = useState<boolean>(true);
 
   const [agoraStatus, setAgoraStatus] = useState<AgoraConnectionStatus>('DISCONNECTED');
@@ -243,6 +256,8 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [locationGPS] = useState<string>('San Francisco, CA (37.7749° N, 122.4194° W)');
   const recognitionRef = useRef<any>(null);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoResumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isEmergencyActive = screenState === 'emergency';
   const setIsEmergencyActive = (active: boolean) => {
@@ -387,16 +402,34 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
 
       utterance.onstart = () => {
-        setIsSpeaking(true);
+        setConversationState('SPEAKING');
         agoraVoiceService.setAISpeaking(true);
+        // Half-Duplex: ensure mic is completely disabled
+        if (recognitionRef.current) {
+          try { recognitionRef.current.stop(); } catch {}
+        }
+        if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
       };
       utterance.onend = () => {
-        setIsSpeaking(false);
         agoraVoiceService.setAISpeaking(false);
+        setConversationState('WAITING_FOR_USER');
+        
+        // Automatic Microphone Handover (continuous natural conversation)
+        if (autoResumeTimeoutRef.current) clearTimeout(autoResumeTimeoutRef.current);
+        autoResumeTimeoutRef.current = setTimeout(() => {
+          if (screenState !== 'landing') {
+            startVoiceSession();
+          }
+        }, 500); // 500ms wait
       };
       utterance.onerror = () => {
-        setIsSpeaking(false);
+        setConversationState('ERROR');
         agoraVoiceService.setAISpeaking(false);
+        // Error Recovery
+        if (autoResumeTimeoutRef.current) clearTimeout(autoResumeTimeoutRef.current);
+        autoResumeTimeoutRef.current = setTimeout(() => {
+          startVoiceSession();
+        }, 300);
       };
 
       window.speechSynthesis.speak(utterance);
@@ -407,8 +440,7 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const stopVoice = () => {
-    setIsSpeaking(false);
-    setIsListening(false);
+    setConversationState('IDLE');
     setInterimTranscript('');
     agoraVoiceService.setAISpeaking(false);
     if (recognitionRef.current) {
@@ -417,6 +449,8 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
+    if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+    if (autoResumeTimeoutRef.current) clearTimeout(autoResumeTimeoutRef.current);
   };
 
   const stopVoiceSession = stopVoice;
@@ -850,12 +884,18 @@ ${emergencySession.ambulance_called || updatedFacts.ambulance_called ? 'Called' 
   };
 
   const startVoiceSession = (userSpeechQuery?: string) => {
+    // Prevent duplicate or overlapping sessions (Strict Half-Duplex)
+    if (conversationState === 'SPEAKING' || conversationState === 'GENERATING' || conversationState === 'PROCESSING') {
+      return;
+    }
+
     setScreenState('conversation');
     agoraVoiceService.joinSession().catch((err) => {
       console.warn('Agora Web Voice Session Notice:', err?.message || err);
     });
     
     if (userSpeechQuery) {
+      setConversationState('PROCESSING');
       handleSpokenInput(userSpeechQuery);
       return;
     }
@@ -863,52 +903,88 @@ ${emergencySession.ambulance_called || updatedFacts.ambulance_called ? 'Called' 
     if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
       try {
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognitionRef.current = recognition;
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
+        // Do not recreate duplicate instances if possible
+        if (!recognitionRef.current) {
+          recognitionRef.current = new SpeechRecognition();
+          recognitionRef.current.continuous = false;
+          recognitionRef.current.interimResults = true;
+          recognitionRef.current.lang = 'en-US';
+        }
+        
+        const recognition = recognitionRef.current;
 
         recognition.onstart = () => {
-          setIsListening(true);
+          setConversationState('LISTENING');
           setInterimTranscript('');
         };
 
         recognition.onresult = (event: any) => {
+          if (conversationState === 'SPEAKING') {
+             // Hard abort if we receive speech during AI TTS
+             try { recognition.abort(); } catch {}
+             return;
+          }
+          
           let currentInterim = '';
+          let finalFound = false;
+          
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
-              handleSpokenInput(transcript);
+              finalFound = true;
+              currentInterim += transcript;
             } else {
               currentInterim += transcript;
-              setInterimTranscript(currentInterim);
             }
+          }
+          
+          setInterimTranscript(currentInterim);
+
+          // VAD/Silence Detection: wait 800ms after user pauses to process
+          if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+          
+          if (currentInterim.trim().length > 0) {
+             silenceTimeoutRef.current = setTimeout(() => {
+                setConversationState('PROCESSING');
+                try { recognition.stop(); } catch {}
+                handleSpokenInput(currentInterim);
+             }, 800);
           }
         };
 
         recognition.onerror = (event: any) => {
           console.warn('Speech recognition error:', event.error);
-          setIsListening(false);
           setInterimTranscript('');
-          handleSpokenInput('My father suddenly collapsed and is not responding.');
+          if (event.error !== 'aborted') {
+            setConversationState('WAITING_FOR_USER');
+            // Mock fallback for hackathon if no mic attached
+            if (event.error === 'not-allowed' || event.error === 'no-speech') {
+               // Ignore gracefully
+            } else {
+               handleSpokenInput('My father suddenly collapsed and is not responding.');
+            }
+          }
         };
 
         recognition.onend = () => {
-          setIsListening(false);
+          if (conversationState === 'LISTENING') {
+             setConversationState('IDLE');
+          }
         };
 
-        recognition.start();
+        try { recognition.start(); } catch (e) { /* already started */ }
       } catch (err) {
         console.warn('Web Speech API error:', err);
-        setIsListening(true);
+        setConversationState('LISTENING');
         setTimeout(() => {
+          setConversationState('PROCESSING');
           handleSpokenInput('My father suddenly collapsed and is not responding.');
         }, 1200);
       }
     } else {
-      setIsListening(true);
+      setConversationState('LISTENING');
       setTimeout(() => {
+        setConversationState('PROCESSING');
         handleSpokenInput('My father suddenly collapsed and is not responding.');
       }, 1200);
     }
@@ -1041,7 +1117,9 @@ ${emergencySession.ambulance_called || updatedFacts.ambulance_called ? 'Called' 
         voiceGender,
         setVoiceGender,
         voicePersonality,
-        setVoicePersonality
+        setVoicePersonality,
+        conversationState,
+        setConversationState
       }}
     >
 

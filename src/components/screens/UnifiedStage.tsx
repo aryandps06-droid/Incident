@@ -58,6 +58,7 @@ export const UnifiedStage: React.FC = () => {
     missingFacts,
     startVoiceSession,
     stopVoice,
+    conversationState,
     explainableReasoning,
     isBackendOnline,
     emergencySession,
@@ -568,20 +569,26 @@ Speak like a calm, warm, human emergency dispatcher with natural pauses.`
                 {/* Voice Orb Area above conversation */}
                 <div className="flex flex-col items-center justify-center space-y-2 pt-2 shrink-0">
                   <div 
-                    onClick={() => isListening || isSpeaking ? stopVoice() : startVoiceSession()}
+                    onClick={() => {
+                      if (conversationState === 'SPEAKING' || conversationState === 'GENERATING') return;
+                      if (isListening) stopVoice(); 
+                      else startVoiceSession();
+                    }}
                     role="button"
                     aria-label="Toggle voice microphone orb"
-                    className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 bg-gradient-to-br from-cyan-950/70 via-[#050816] to-[#03050F] backdrop-blur-3xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 hover:scale-105 ${
-                      isUserSpeaking
-                        ? 'border-emerald-400 shadow-glow-emerald'
-                        : isAISpeaking
-                          ? 'border-purple-400 shadow-glow-purple'
-                          : 'border-cyan-400/60 animate-breathe'
+                    className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 bg-gradient-to-br from-cyan-950/70 via-[#050816] to-[#03050F] backdrop-blur-3xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 ${
+                      conversationState === 'SPEAKING'
+                        ? 'border-red-400/50 shadow-[0_0_15px_rgba(248,113,113,0.3)] pointer-events-none'
+                        : isListening
+                          ? 'border-blue-400 shadow-glow-blue cursor-pointer'
+                          : isAnalyzing
+                            ? 'border-purple-400 shadow-glow-purple cursor-pointer'
+                            : 'border-cyan-400/60 animate-breathe cursor-pointer'
                     }`}
                   >
-                    <Mic className={`w-7 h-7 ${isUserSpeaking ? 'text-emerald-300 animate-bounce' : isAISpeaking ? 'text-purple-300 animate-pulse' : 'text-cyan-300'}`} />
-                    <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-cyan-300 mt-1">
-                      {isUserSpeaking ? 'LISTENING' : isAISpeaking ? 'SPEAKING' : 'TAP MIC'}
+                    <Mic className={`w-7 h-7 ${conversationState === 'SPEAKING' ? 'text-red-400/50' : isListening ? 'text-blue-300 animate-pulse' : isAnalyzing ? 'text-purple-300 animate-pulse' : 'text-cyan-300'}`} />
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-wider mt-1 ${conversationState === 'SPEAKING' ? 'text-red-400/60' : 'text-cyan-300'}`}>
+                      {conversationState === 'SPEAKING' ? 'LOCKED' : isListening ? 'LISTENING' : isAnalyzing ? 'THINKING' : 'TAP MIC'}
                     </span>
                   </div>
 

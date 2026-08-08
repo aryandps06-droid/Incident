@@ -1,6 +1,7 @@
 export type ScreenState = 'landing' | 'conversation' | 'emergency' | 'summary';
 export type ActiveView = 'command' | 'medical-id' | 'incidents' | 'settings';
 export type SidebarTab = 'dashboard' | 'emergency' | 'calls' | 'patients' | 'history' | 'hospitals' | 'analytics' | 'settings';
+export type ConversationState = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'GENERATING' | 'SPEAKING' | 'WAITING_FOR_USER' | 'INTERRUPTED' | 'ERROR';
 
 export interface DialogueMessage {
   id: string;

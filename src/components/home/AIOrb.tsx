@@ -5,14 +5,22 @@ import { Mic, Sparkles, BrainCircuit } from 'lucide-react';
 import { VoiceWaveform } from './VoiceWaveform';
 
 export const AIOrb: React.FC = () => {
-  const { isListening, isSpeaking, isAnalyzing, isUserSpeaking, isAISpeaking, screenState, startConversation, stopVoice } = useEmergency();
+  const { conversationState, startConversation, stopVoice } = useEmergency();
   
   const [isHovered, setIsHovered] = useState(false);
   const [ripples, setRipples] = useState<Array<{ id: number }>>([]);
 
-  const isActiveState = isListening || isSpeaking || isAnalyzing || isUserSpeaking || isAISpeaking;
+  const isListening = conversationState === 'LISTENING';
+  const isAnalyzing = conversationState === 'PROCESSING' || conversationState === 'GENERATING';
+  const isSpeaking = conversationState === 'SPEAKING';
+  const isActiveState = isListening || isSpeaking || isAnalyzing;
 
   const handleOrbClick = () => {
+    // Locked when AI is speaking (Strict Half-Duplex)
+    if (conversationState === 'SPEAKING' || conversationState === 'GENERATING') {
+      return; 
+    }
+
     const newRipple = { id: Date.now() };
     setRipples((prev) => [...prev.slice(-3), newRipple]);
 
@@ -24,22 +32,22 @@ export const AIOrb: React.FC = () => {
   };
 
   // Humanized labels based on Next-Generation UX
-  const primaryText = isUserSpeaking || isListening
+  const primaryText = isListening
     ? "👂 I'm listening..." 
     : isAnalyzing
       ? "🧠 Let me think..."
-      : isAISpeaking || isSpeaking 
-        ? "✨ Speaking..." 
-        : screenState !== 'landing' 
+      : isSpeaking 
+        ? "🔒 EchoAid is speaking..." 
+        : conversationState !== 'IDLE' 
           ? "Voice Session Active" 
           : "Tap or speak to begin";
 
   // Color mapping
-  const activeColorStr = (isUserSpeaking || isListening) 
+  const activeColorStr = isListening 
     ? '#3B82F6' // Blue
     : isAnalyzing 
       ? '#A855F7' // Purple
-      : (isAISpeaking || isSpeaking)
+      : isSpeaking
         ? '#00E5FF' // Cyan
         : '#00E5FF';
 
@@ -51,20 +59,21 @@ export const AIOrb: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border backdrop-blur-xl transition-colors duration-500 ${
           isAnalyzing ? 'border-purple-400/30 shadow-[0_0_12px_rgba(168,85,247,0.2)]' :
-          (isUserSpeaking || isListening) ? 'border-blue-400/30 shadow-[0_0_12px_rgba(59,130,246,0.2)]' :
+          isListening ? 'border-blue-400/30 shadow-[0_0_12px_rgba(59,130,246,0.2)]' :
+          isSpeaking ? 'border-red-400/30 shadow-[0_0_12px_rgba(248,113,113,0.2)]' :
           'border-cyan-400/30 shadow-[0_0_12px_rgba(0,229,255,0.2)]'
         }`}
       >
         <span className="relative flex h-2 w-2">
           <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-            isAnalyzing ? 'bg-purple-400' : (isUserSpeaking || isListening) ? 'bg-blue-400' : 'bg-cyan-400'
+            isAnalyzing ? 'bg-purple-400' : isListening ? 'bg-blue-400' : isSpeaking ? 'bg-red-400' : 'bg-cyan-400'
           }`} />
           <span className={`relative inline-flex rounded-full h-2 w-2 ${
-            isAnalyzing ? 'bg-purple-400' : (isUserSpeaking || isListening) ? 'bg-blue-400' : 'bg-cyan-400'
+            isAnalyzing ? 'bg-purple-400' : isListening ? 'bg-blue-400' : isSpeaking ? 'bg-red-400' : 'bg-cyan-400'
           }`} />
         </span>
         <span className={`text-[10px] font-mono font-bold tracking-[0.2em] uppercase transition-colors duration-500 ${
-          isAnalyzing ? 'text-purple-300' : (isUserSpeaking || isListening) ? 'text-blue-300' : 'text-cyan-300'
+          isAnalyzing ? 'text-purple-300' : isListening ? 'text-blue-300' : isSpeaking ? 'text-red-300' : 'text-cyan-300'
         }`}>
           AI VOICE CORE
         </span>
@@ -72,7 +81,7 @@ export const AIOrb: React.FC = () => {
 
       {/* Main Holographic 3-Layer Orb Stage */}
       <div 
-        className="relative flex items-center justify-center cursor-pointer group select-none my-1" 
+        className={`relative flex items-center justify-center cursor-pointer group select-none my-1 ${isSpeaking ? 'pointer-events-none' : ''}`} 
         onClick={handleOrbClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -87,11 +96,11 @@ export const AIOrb: React.FC = () => {
         {/* Ambient Bloom */}
         <motion.div
           animate={{
-            scale: isAISpeaking ? [1, 1.25, 1] : isUserSpeaking ? [1, 1.2, 1] : isHovered ? 1.15 : [1, 1.06, 1],
+            scale: isSpeaking ? [1, 1.25, 1] : isListening ? [1, 1.2, 1] : isHovered ? 1.15 : [1, 1.06, 1],
             opacity: isActiveState ? [0.75, 0.95, 0.75] : isHovered ? 0.85 : [0.45, 0.65, 0.45],
             background: `radial-gradient(circle, ${activeColorStr}80 0%, transparent 70%)`
           }}
-          transition={{ duration: isAISpeaking ? 1.2 : isUserSpeaking ? 1.5 : 3.5, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: isSpeaking ? 1.2 : isListening ? 1.5 : 3.5, repeat: Infinity, ease: 'easeInOut' }}
           className="absolute w-40 h-40 sm:w-48 sm:h-48 rounded-full blur-[36px] pointer-events-none"
         />
 
