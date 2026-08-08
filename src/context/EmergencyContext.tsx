@@ -265,9 +265,6 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     else setScreenState('landing');
   };
 
-  const isTalking = isSpeaking;
-  const setIsTalking = setIsSpeaking;
-
   // Live Backend & NVIDIA Health Poller (every 5 seconds)
   useEffect(() => {
     const checkStatus = async () => {
