@@ -457,30 +457,7 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   // Full Pipeline: User Speech -> Automatic Fact Extraction -> Known Facts Summary -> NVIDIA NIM -> Voice Output
-  // ─── INTENT CLASSIFIER ────────────────────────────────────────────────────
-  const classifyIntent = (text: string): 'greeting' | 'testing' | 'general' | 'emergency' => {
-    const t = text.toLowerCase().trim();
 
-    // Greeting: very short, no distress keywords
-    const greetingPhrases = ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'howdy', 'greetings'];
-    const isGreeting = greetingPhrases.some(g => t === g || t.startsWith(g + ' ') || t.startsWith(g + ',') || t.startsWith(g + '!'));
-    if (isGreeting && t.length < 40) return 'greeting';
-
-    // Testing / demo intent
-    const testPhrases = ["i'm testing", "im testing", 'just testing', 'this is a test', 'this is a demo', 'can you hear me', 'testing voice', 'testing the system', 'just a demo', 'demo mode', 'testing testing', 'check check', 'hello this is a test'];
-    if (testPhrases.some(p => t.includes(p))) return 'testing';
-
-    // General questions — not an emergency
-    const generalPhrases = ['what can you do', 'who built', 'who created', 'who made', 'tell me about', 'what is echoaid', 'what are your features', 'how does this work', 'what is this', 'what do you do', 'what are you', 'what\'s the weather', 'weather', 'news', 'tell me a joke', 'play music'];
-    if (generalPhrases.some(p => t.includes(p))) return 'general';
-
-    // Emergency keywords
-    const emergencyKeywords = ['collapse', 'collapsed', 'unconscious', 'not breathing', 'stopped breathing', 'chest pain', 'heart attack', 'stroke', 'bleeding', 'blood', 'accident', 'crash', 'fire', 'hurt', 'injured', 'injury', 'overdose', 'poisoned', 'seizure', 'convulsing', 'choking', 'drowning', 'help', 'emergency', '911', '108', 'ambulance', 'fainted', 'passed out', 'unresponsive', 'not responding', 'stabbed', 'shot', 'burn', 'allergic', 'anaphylaxis', 'diabetic', 'fell', 'broken', 'fracture', 'dying', 'dead', 'not moving'];
-    if (emergencyKeywords.some(k => t.includes(k))) return 'emergency';
-
-    // Default: treat as general if short, emergency if longer (likely describing a situation)
-    return t.split(' ').length > 5 ? 'emergency' : 'general';
-  };
 
   const handleSpokenInput = async (spokenText: string) => {
     if (!spokenText.trim()) return;
@@ -500,8 +477,7 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const lower = spokenText.toLowerCase();
 
-    // ─── STEP 1: Detect intent ────────────────────────────────────────────────
-    const intent = classifyIntent(spokenText);
+    // ─── STEP 1: Process User Input ────────────────────────────────────────────────
 
     // Always add user message first
     setDialogueMessages(prev => [...prev, userMsg]);
