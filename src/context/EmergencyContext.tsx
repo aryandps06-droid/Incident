@@ -506,47 +506,12 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Always add user message first
     setDialogueMessages(prev => [...prev, userMsg]);
 
-    // ─── GREETING ─────────────────────────────────────────────────────────────
-    if (intent === 'greeting') {
-      setIsAnalyzing(false);
-      const greetingReply = "Hello. I'm EchoAid X, your AI emergency companion. Are you experiencing an emergency right now, or are you testing the system today?";
-      addDialogueMessage({ sender: 'ECHO_AI', text: greetingReply, confidence: 0.99 });
-      speakInstruction(greetingReply);
-      return;
-    }
-
-    // ─── TESTING ──────────────────────────────────────────────────────────────
-    if (intent === 'testing') {
-      setIsAnalyzing(false);
-      const testReply = "Great. You're now connected to EchoAid X. You can test voice conversations, emergency guidance, live location sharing, and incident report generation. Whenever you're ready, describe an emergency scenario or ask a question.";
-      addDialogueMessage({ sender: 'ECHO_AI', text: testReply, confidence: 0.99 });
-      speakInstruction(testReply);
-      return;
-    }
-
     // ─── FOUNDER / COSMICNEXUS ─────────────────────────────────────────────────
-    if (lower.includes('who built') || lower.includes('who created') || lower.includes('who made') || lower.includes('founder')) {
+    if (lower.includes('who built') || lower.includes('who created') || lower.includes('who made') || lower.includes('founder') || lower.includes('cosmicnexus') || lower.includes('cosmic nexus')) {
       setIsAnalyzing(false);
       const founderResponse = "EchoAid X was conceived and built by Kumar Aryan, Founder of CosmicNexus. The mission is to build human-centered emergency AI that assists people during critical situations through real-time voice intelligence.";
       addDialogueMessage({ sender: 'ECHO_AI', text: founderResponse, confidence: 0.99 });
       speakInstruction(founderResponse);
-      return;
-    }
-
-    if (lower.includes('cosmicnexus') || lower.includes('cosmic nexus')) {
-      setIsAnalyzing(false);
-      const teamResponse = "CosmicNexus is the team behind EchoAid X, focused on building intelligent, human-centered AI systems for real-world impact.";
-      addDialogueMessage({ sender: 'ECHO_AI', text: teamResponse, confidence: 0.99 });
-      speakInstruction(teamResponse);
-      return;
-    }
-
-    // ─── GENERAL QUESTION (non-emergency) ────────────────────────────────────
-    if (intent === 'general') {
-      setIsAnalyzing(false);
-      const generalReply = "I'm designed to assist with emergency situations and safety guidance. If you're testing the system or have an emergency to report, I'm ready to help.";
-      addDialogueMessage({ sender: 'ECHO_AI', text: generalReply, confidence: 0.99 });
-      speakInstruction(generalReply);
       return;
     }
 
