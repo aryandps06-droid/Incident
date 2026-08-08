@@ -1,0 +1,370 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@theme {
+  --color-space-bg: #03050F;
+  --color-space-card: #0D1324;
+  --color-space-surface: #121A30;
+  --color-space-border: rgba(255, 255, 255, 0.08);
+
+  --color-brand-accent: #3B82F6;
+  --color-brand-emergency: #EF4444;
+  --color-brand-success: #10B981;
+
+  --font-sans: 'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  background-color: #03050F;
+  color: #F8FAFC;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── GPU Hardware Accelerated Compositing Isolation ─── */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, opacity;
+}
+
+/* ─── Awwwards Luxury Squircle Glass ─── */
+.glass-card {
+  background: rgba(13, 19, 36, 0.65);
+  backdrop-filter: blur(36px);
+  -webkit-backdrop-filter: blur(36px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 28px;
+  box-shadow:
+    0 30px 80px -15px rgba(0, 0, 0, 0.7),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.glass-card-hover {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease, border-color 0.4s ease;
+  will-change: transform;
+}
+
+.glass-card-hover:hover {
+  background: rgba(18, 26, 48, 0.8);
+  border-color: rgba(6, 182, 212, 0.45);
+  box-shadow:
+    0 35px 90px -10px rgba(0, 0, 0, 0.8),
+    0 0 50px rgba(6, 182, 212, 0.2),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.25);
+  transform: translate3d(0, -6px, 0) scale3d(1.02, 1.02, 1);
+}
+
+/* ─── GPU Accelerated Volumetric Aurora Layers (60-120 FPS) ─── */
+.aurora-layer-1 {
+  animation: aurora-flow-1 25s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+.aurora-layer-2 {
+  animation: aurora-flow-2 32s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+.aurora-layer-3 {
+  animation: aurora-flow-3 38s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+.aurora-layer-4 {
+  animation: aurora-flow-4 28s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+@keyframes aurora-flow-1 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale3d(1, 1, 1) rotate(0deg); opacity: 0.6; }
+  50% { transform: translate3d(90px, -50px, 0) scale3d(1.18, 1.18, 1) rotate(7deg); opacity: 0.9; }
+}
+
+@keyframes aurora-flow-2 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale3d(1, 1, 1) rotate(0deg); opacity: 0.55; }
+  50% { transform: translate3d(-70px, 60px, 0) scale3d(1.22, 1.22, 1) rotate(-9deg); opacity: 0.85; }
+}
+
+@keyframes aurora-flow-3 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale3d(1, 1, 1) rotate(0deg); opacity: 0.6; }
+  50% { transform: translate3d(100px, 40px, 0) scale3d(1.15, 1.15, 1) rotate(6deg); opacity: 0.95; }
+}
+
+@keyframes aurora-flow-4 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale3d(1, 1, 1) rotate(0deg); opacity: 0.5; }
+  50% { transform: translate3d(-80px, -35px, 0) scale3d(1.2, 1.2, 1) rotate(-5deg); opacity: 0.8; }
+}
+
+/* ─── Continuous 10s Hardware Accelerated Gradient Shimmer ─── */
+.animate-gradient-shimmer {
+  background-size: 300% 300%;
+  animation: gradient-shimmer-10s 10s ease infinite;
+  will-change: background-position;
+}
+
+@keyframes gradient-shimmer-10s {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ─── 8s Gradient Shimmer Sweep (#35E0FF -> #7C7DFF -> #E44DFF) ─── */
+.animate-hero-gradient-shift {
+  background: linear-gradient(135deg, #35E0FF 0%, #7C7DFF 50%, #E44DFF 100%);
+  background-size: 200% 200%;
+  animation: hero-gradient-shift-8s 8s ease-in-out infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  will-change: background-position;
+}
+
+@keyframes hero-gradient-shift-8s {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ─── Text Glow Pulse & Brain Pulse (GPU Accelerated) ─── */
+.animate-text-glow {
+  animation: text-glow-5s 5s ease-in-out infinite;
+  will-change: opacity;
+}
+
+@keyframes text-glow-5s {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
+}
+
+.animate-brain-pulse {
+  animation: brain-glow-3s 3s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+@keyframes brain-glow-3s {
+  0%, 100% { opacity: 0.7; transform: scale3d(1, 1, 1); }
+  50% { opacity: 0.95; transform: scale3d(1.08, 1.08, 1); }
+}
+
+/* ─── Glass Head Reflection Sweep ─── */
+.animate-glass-reflection {
+  animation: glass-rim-sweep 6s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+@keyframes glass-rim-sweep {
+  0%, 100% { opacity: 0.25; transform: translate3d(-15%, 0, 0); }
+  50% { opacity: 0.85; transform: translate3d(15%, 0, 0); }
+}
+
+/* ─── Holographic Scanner Sweep (8s) ─── */
+.animate-scanner-sweep {
+  animation: scanner-sweep 8s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+@keyframes scanner-sweep {
+  0%, 100% { transform: translate3d(0, -100%, 0); opacity: 0; }
+  10% { opacity: 0.8; }
+  50% { transform: translate3d(0, 100%, 0); opacity: 0.8; }
+  60% { opacity: 0; }
+}
+
+/* ─── Voice Orb Expanding Ripple Rings (3s) ─── */
+.animate-orb-ripple {
+  animation: orb-ripple 3s ease-out infinite;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+@keyframes orb-ripple {
+  0% { transform: scale3d(0.9, 0.9, 1); opacity: 0.8; }
+  100% { transform: scale3d(1.6, 1.6, 1); opacity: 0; }
+}
+
+/* ─── Synaptic Electrical Spark Flash (2.5s) ─── */
+.animate-synapse-flash {
+  animation: synapse-flash 2.5s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: opacity, transform;
+}
+
+@keyframes synapse-flash {
+  0%, 100% { opacity: 0.2; transform: scale3d(0.8, 0.8, 1); }
+  50% { opacity: 1; transform: scale3d(1.4, 1.4, 1); }
+}
+
+/* ─── ECG Heartbeat Pulse (1.2s) ─── */
+.animate-ecg-heartbeat {
+  animation: ecg-pulse-12s 1.2s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+@keyframes ecg-pulse-12s {
+  0%, 100% { opacity: 0.6; transform: scale3d(1, 1, 1); }
+  15% { opacity: 1; transform: scale3d(1.08, 1.15, 1); }
+  30% { opacity: 0.6; transform: scale3d(1, 1, 1); }
+}
+
+/* ─── HUD Rings Rotations (40s, 60s, 80s) ─── */
+.animate-hud-rotate-40s {
+  animation: hud-rotate-40 40s linear infinite;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.animate-hud-rotate-reverse-60s {
+  animation: hud-rotate-reverse-60 60s linear infinite;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.animate-hud-rotate-80s {
+  animation: hud-rotate-80 80s linear infinite;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+@keyframes hud-rotate-40 {
+  from { transform: rotate3d(0, 0, 1, 0deg); }
+  to { transform: rotate3d(0, 0, 1, 360deg); }
+}
+
+@keyframes hud-rotate-reverse-60 {
+  from { transform: rotate3d(0, 0, 1, 0deg); }
+  to { transform: rotate3d(0, 0, 1, -360deg); }
+}
+
+@keyframes hud-rotate-80 {
+  from { transform: rotate3d(0, 0, 1, 0deg); }
+  to { transform: rotate3d(0, 0, 1, 360deg); }
+}
+
+/* ─── Ultra-Clean Custom Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 229, 255, 0.6);
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 229, 255, 0.25) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.25);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 229, 255, 0.65);
+}
+
+/* ─── Premium Focus Ring \u2014 elegant, accessible ─── */
+:focus-visible {
+  outline: 2px solid rgba(0, 229, 255, 0.7);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ─── Glass Card Shimmer Sweep ─── */
+.glass-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.glass-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 80%
+  );
+  filter: blur(8px);
+  animation: shimmer-sweep 10s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes shimmer-sweep {
+  0%, 30% { left: -100%; opacity: 0; }
+  40% { opacity: 1; }
+  70% { left: 130%; opacity: 0; }
+  100% { left: 130%; opacity: 0; }
+}
+
+/* ─── Breathing ambient glow (idle mic orb) ─── */
+@keyframes soft-breathe {
+  0%, 100% { box-shadow: 0 0 18px 4px rgba(0, 229, 255, 0.18), 0 0 0px 0px rgba(0,229,255,0.08); }
+  50% { box-shadow: 0 0 32px 10px rgba(0, 229, 255, 0.28), 0 0 60px 20px rgba(168, 85, 247, 0.12); }
+}
+.animate-breathe {
+  animation: soft-breathe 3.5s ease-in-out infinite;
+}
+
+/* ─── Prefers-Reduced-Motion: kill all animations ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─── Mobile sticky bottom bar ─── */
+@media (max-width: 640px) {
+  .mobile-sticky-bar {
+    position: sticky;
+    bottom: 0;
+    background: rgba(7, 12, 30, 0.96);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding: 12px 16px;
+    z-index: 40;
+  }
+}
+
+/* ─── Button active scale micro-feedback ─── */
+button:active, [role="button"]:active {
+  transform: scale(0.97);
+  transition: transform 0.08s ease;
+}
+

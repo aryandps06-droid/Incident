@@ -1,0 +1,126 @@
+/* HeroBrain.css - Standalone 800px x 900px Transparent Reusable Artwork Component */
+
+.hero-brain-artwork-stage {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  height: 900px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* 1. Translucent Holographic Glass Head Motion Container */
+.hero-head-glass-body {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: heroHeadOscillate 14s ease-in-out infinite alternate, heroHeadBreathe 7s ease-in-out infinite alternate;
+}
+
+@keyframes heroHeadOscillate {
+  0% { transform: rotate(-3.5deg); }
+  100% { transform: rotate(3.5deg); }
+}
+
+@keyframes heroHeadBreathe {
+  0% { translateY: -8px; }
+  100% { translateY: 8px; }
+}
+
+/* Volumetric Subsurface Glow Behind Head */
+.hero-brain-volumetric-glow {
+  position: absolute;
+  width: 650px;
+  height: 650px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.45) 0%, rgba(168, 85, 247, 0.35) 40%, rgba(0, 229, 255, 0.2) 75%, rgba(3, 6, 20, 0) 100%);
+  filter: blur(120px);
+  pointer-events: none;
+  animation: heroVolumetricPulse 6s ease-in-out infinite alternate;
+}
+
+@keyframes heroVolumetricPulse {
+  0% { transform: scale(0.92); opacity: 0.65; }
+  100% { transform: scale(1.12); opacity: 0.95; }
+}
+
+/* 3. Three Rotating Concentric HUD Rings */
+.hero-hud-ring-1 {
+  position: absolute;
+  width: 680px;
+  height: 680px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 229, 255, 0.25);
+  border-top-color: rgba(236, 72, 153, 0.9);
+  border-bottom-color: rgba(168, 85, 247, 0.65);
+  pointer-events: none;
+  animation: heroRotateClockwise 45s linear infinite;
+}
+
+.hero-hud-ring-2 {
+  position: absolute;
+  width: 560px;
+  height: 560px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(168, 85, 247, 0.3);
+  border-right-color: rgba(236, 72, 153, 0.85);
+  border-left-color: rgba(0, 229, 255, 0.6);
+  pointer-events: none;
+  animation: heroRotateCounterClockwise 58s linear infinite;
+}
+
+.hero-hud-ring-3 {
+  position: absolute;
+  width: 440px;
+  height: 440px;
+  border-radius: 50%;
+  border: 1px dashed rgba(0, 229, 255, 0.35);
+  pointer-events: none;
+  animation: heroRotateClockwise 75s linear infinite;
+}
+
+@keyframes heroRotateClockwise {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes heroRotateCounterClockwise {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
+
+/* 6. Floating ECG Telemetry Card */
+.hero-ecg-telemetry-badge {
+  position: absolute;
+  bottom: 50px;
+  right: 30px;
+  background: rgba(7, 16, 33, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 14px 18px;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+  font-family: monospace;
+  font-size: 11px;
+  color: #e2e8f0;
+  z-index: 25;
+}
+
+.hero-ecg-stroke-line {
+  stroke: #ec4899;
+  filter: drop-shadow(0 0 10px #ec4899);
+  animation: heroEcgDash 2.2s linear infinite;
+}
+
+@keyframes heroEcgDash {
+  0% { stroke-dashoffset: 280; }
+  100% { stroke-dashoffset: 0; }
+}

@@ -1,0 +1,154 @@
+{
+  "profile": {
+    "full_name": "Alexander Vance",
+    "age": 34,
+    "gender": "Male",
+    "blood_type": "O-Positive (O+)",
+    "allergies": [
+      "Penicillin",
+      "Bee Stings",
+      "Latex"
+    ],
+    "medical_conditions": [
+      "Mild Asthma",
+      "Hypertension"
+    ],
+    "medications": [
+      "Albuterol Inhaler (PRN)",
+      "Lisinopril 10mg"
+    ],
+    "organ_donor": true,
+    "insurance_provider": "Aetna Healthcare #99281-EA",
+    "emergency_note": "Carries epi-pen in main backpack pocket. Pre-existing bronchial sensitivity."
+  },
+  "contacts": [
+    {
+      "id": "c1",
+      "name": "Dr. Sarah Connor",
+      "relationship": "Primary Physician / Spouse",
+      "phone": "+1 (555) 019-2834",
+      "email": "sarah.connor@echoaid.io",
+      "is_primary": true,
+      "notify_on_sos": true
+    },
+    {
+      "id": "c2",
+      "name": "Marcus Vance",
+      "relationship": "Brother",
+      "phone": "+1 (555) 014-9921",
+      "email": "marcus.vance@techmesh.net",
+      "is_primary": false,
+      "notify_on_sos": true
+    },
+    {
+      "id": "c3",
+      "name": "Metro Emergency Dispatch Center",
+      "relationship": "Local EMS Proxy Relay",
+      "phone": "911 (Automated Telemetry)",
+      "email": "dispatch@metro-ems.gov",
+      "is_primary": false,
+      "notify_on_sos": true
+    }
+  ],
+  "incidents": [
+    {
+      "category": "Cardiac / Sudden Collapse",
+      "severity": "CRITICAL",
+      "symptoms_reported": [
+        "High-Fidelity CPR & Resuscitation Protocol"
+      ],
+      "ai_assessment": "CRITICAL EMERGENCY. Stay calm. Follow the rhythmic audio beat. EchoAid AI emergency dispatch relay has been activated.",
+      "duration_seconds": 180,
+      "location": "37.7749\u00b0 N, 122.4194\u00b0 W (San Francisco, CA)",
+      "steps_completed": 4,
+      "total_steps": 4,
+      "id": "INC-37475",
+      "timestamp": "2026-08-06T15:55:00.415853",
+      "status": "Resolved",
+      "vital_summary": {
+        "peak_hr": 124,
+        "avg_spo2": "97%",
+        "bp": "122/82"
+      },
+      "responder_eta": "4.0 mins"
+    },
+    {
+      "id": "INC-88219",
+      "timestamp": "2026-08-01T14:32:00Z",
+      "category": "Cardiac Triage Simulation",
+      "severity": "CRITICAL",
+      "status": "Resolved",
+      "location": "37.7749\u00b0 N, 122.4194\u00b0 W (San Francisco, CA)",
+      "symptoms_reported": [
+        "Chest pain",
+        "Shortness of breath",
+        "Left arm tingling"
+      ],
+      "ai_assessment": "High probability acute coronary event. CPR cadence 110 bpm initiated. Dispatch notified at T+12s.",
+      "steps_completed": 4,
+      "total_steps": 4,
+      "duration_seconds": 284,
+      "responder_eta": "4.2 mins",
+      "vital_summary": {
+        "peak_hr": 142,
+        "avg_spo2": "94%",
+        "bp": "145/95"
+      }
+    },
+    {
+      "id": "INC-74102",
+      "timestamp": "2026-07-22T09:15:00Z",
+      "category": "Severe Allergic Anaphylaxis",
+      "severity": "URGENT",
+      "status": "Resolved",
+      "location": "37.7833\u00b0 N, 122.4167\u00b0 W (Financial District)",
+      "symptoms_reported": [
+        "Facial swelling",
+        "Wheezing",
+        "Stinger exposure"
+      ],
+      "ai_assessment": "Anaphylactic reaction detected. Guided EpiPen administration into lateral thigh. Airway monitored continuously.",
+      "steps_completed": 3,
+      "total_steps": 3,
+      "duration_seconds": 190,
+      "responder_eta": "6.0 mins",
+      "vital_summary": {
+        "peak_hr": 128,
+        "avg_spo2": "96%",
+        "bp": "120/80"
+      }
+    },
+    {
+      "id": "INC-61920",
+      "timestamp": "2026-06-11T18:40:00Z",
+      "category": "Trauma & Arterial Bleed Control",
+      "severity": "URGENT",
+      "status": "Resolved",
+      "location": "37.7500\u00b0 N, 122.4333\u00b0 W (Mission District)",
+      "symptoms_reported": [
+        "Deep glass cut on left forearm",
+        "Pulsatile bleeding"
+      ],
+      "ai_assessment": "Direct pressure protocol applied. Tourniquet prep guided. Limb elevation confirmed.",
+      "steps_completed": 5,
+      "total_steps": 5,
+      "duration_seconds": 340,
+      "responder_eta": "5.5 mins",
+      "vital_summary": {
+        "peak_hr": 115,
+        "avg_spo2": "98%",
+        "bp": "118/78"
+      }
+    }
+  ],
+  "settings": {
+    "voice_speed": 1.0,
+    "voice_gender": "Calm Female (Echo Core)",
+    "auto_dispatch_911": true,
+    "crash_detection_sensitivity": "High",
+    "fall_detection_enabled": true,
+    "offline_ai_fallback": true,
+    "biometric_lock": true,
+    "stealth_sos_trigger": "Triple Power Button Tap"
+  }
+}
