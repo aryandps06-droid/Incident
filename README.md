@@ -1,6 +1,10 @@
 # EchoAid X — The World's First AI Emergency Companion 🚑🤖
 
-> **Built for the EchoSphere Agora Conversational AI Hackathon**
+[![GitHub](https://img.shields.io/badge/GitHub-aryandps06--droid%2Fechoaid--x-181717?style=for-the-badge&logo=github)](https://github.com/aryandps06-droid/echoaid-x)
+[![Vercel](https://img.shields.io/badge/Vercel-Live%20Demo-000000?style=for-the-badge&logo=vercel)](https://echoaid-x.vercel.app)
+[![License](https://img.shields.io/badge/License-MIT-cyan?style=for-the-badge)]()
+
+> **Built by Kumar Aryan · Founder of CosmicNexus** — for the EchoSphere Agora Conversational AI Hackathon
 
 **EchoAid X** is a real-time, voice-first AI emergency companion powered by **Agora Conversational AI Voice Gateway** and **NVIDIA NIM AI Reasoning Engines**. Designed with an Apple-grade, VisionOS-inspired glassmorphism design system, EchoAid X uses **Progressive Disclosure** to deliver calm, instantaneous, and life-saving guidance during critical medical and safety emergencies.
 
