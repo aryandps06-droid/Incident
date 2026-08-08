@@ -270,7 +270,7 @@ export const LandingScreen: React.FC = () => {
           </AnimatePresence>
 
           {/* Depth Shadow Behind Holographic Head */}
-          <div className="absolute inset-0 w-full h-full bg-radial-vignette opacity-70 pointer-events-none" />
+          <div className="absolute inset-0 w-full h-full bg-radial-vignette opacity-30 pointer-events-none" />
 
           {/* Requirement 13: Light Refraction Mesh (Aurora colors soft bend across skull) */}
           <motion.div 
@@ -286,10 +286,10 @@ export const LandingScreen: React.FC = () => {
           <img
             src="/assets/hero.webp"
             alt="EchoAid X Holographic Glass Head & Brain Artwork"
-            className="h-full w-auto max-w-none object-contain object-right z-0 pointer-events-none opacity-95 mix-blend-lighten filter drop-shadow-[0_20px_50px_rgba(0,0,0,0.9)]"
+            className="h-full w-auto max-w-none object-contain object-right z-0 pointer-events-none opacity-100 mix-blend-lighten filter brightness-125 contrast-105 drop-shadow-[0_20px_50px_rgba(0,0,0,0.9)]"
             style={{
-              maskImage: 'linear-gradient(to right, transparent 0%, transparent 30%, rgba(0,0,0,0.2) 42%, rgba(0,0,0,0.7) 58%, black 78%)',
-              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, transparent 30%, rgba(0,0,0,0.2) 42%, rgba(0,0,0,0.7) 58%, black 78%)'
+              maskImage: 'linear-gradient(to right, transparent 0%, transparent 30%, rgba(0,0,0,0.3) 42%, rgba(0,0,0,0.8) 58%, black 78%)',
+              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, transparent 30%, rgba(0,0,0,0.3) 42%, rgba(0,0,0,0.8) 58%, black 78%)'
             }}
           />
 
