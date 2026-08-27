@@ -274,8 +274,9 @@ class ChatRequest(BaseModel):
     patient_status: Optional[str] = "Conscious"
     location: Optional[str] = "San Francisco, CA"
 
-# NVIDIA NIM AI Service Endpoint
+# NVIDIA NIM AI Service Endpoints (Support both /api/nvidia/status and /nvidia/status)
 @app.get("/api/nvidia/status")
+@app.get("/nvidia/status")
 def nvidia_status():
     return {
         "configured": nvidia_client.is_configured(),
@@ -285,6 +286,7 @@ def nvidia_status():
     }
 
 @app.post("/api/chat")
+@app.post("/chat")
 def nvidia_chat(req: ChatRequest):
     formatted_msgs = [{"role": m.role, "content": m.content} for m in req.messages]
     result = nvidia_client.analyze_emergency(formatted_msgs)

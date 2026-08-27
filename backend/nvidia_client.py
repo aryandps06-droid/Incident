@@ -141,13 +141,23 @@ class AntiRepetitionEngine:
 class NVIDIAClient:
     """EchoAid Emergency Dispatcher Pipeline."""
     def __init__(self):
-        self.api_key = os.getenv("NVIDIA_API_KEY", "").strip()
-        self.model = os.getenv("NVIDIA_MODEL", "meta/llama-3.1-70b-instruct").strip()
-        self.base_url = os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1").strip()
         self.previous_ai_texts: List[str] = []
 
+    @property
+    def api_key(self) -> str:
+        return os.getenv("NVIDIA_API_KEY", "").strip()
+
+    @property
+    def model(self) -> str:
+        return os.getenv("NVIDIA_MODEL", "meta/llama-3.1-70b-instruct").strip()
+
+    @property
+    def base_url(self) -> str:
+        return os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1").strip()
+
     def is_configured(self) -> bool:
-        return bool(self.api_key and not self.api_key.startswith("your_nvidia_nim_api_key"))
+        k = self.api_key
+        return bool(k and not k.startswith("your_nvidia_nim_api_key"))
 
     def detect_emotion(self, last_user_msg: str) -> str:
         msg_lower = last_user_msg.lower()
