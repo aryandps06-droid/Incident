@@ -2,6 +2,8 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { Activity, ShieldCheck, Cpu, Terminal, Zap } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
+import heroRobotImg from '../../assets/echoaid_ai_hero_figure.jpg';
+import heroRobotWebp from '../../assets/hero_robot.webp';
 
 // ─── Interfaces for Canvas Synaptic Engine ────────────────────────────────────
 interface SynapseNode {
@@ -755,16 +757,51 @@ export const NeuralAIFigure: React.FC = () => {
           className="absolute inset-0 w-full h-full pointer-events-none z-20 mix-blend-screen"
         />
 
-        {/* ─── Generated AI Entity Master Silhouette ─── */}
-        <img
-          src="/images/echoaid_neural_ai_core.jpg"
-          alt="EchoAid X Neural Incident Commander"
-          className="relative z-10 w-full h-full object-contain object-center drop-shadow-[0_15px_50px_rgba(0,217,255,0.4)] pointer-events-none"
-          style={{
-            maskImage: 'radial-gradient(circle at 50% 50%, black 72%, transparent 98%)',
-            WebkitMaskImage: 'radial-gradient(circle at 50% 50%, black 72%, transparent 98%)',
+        {/* ─── AI Incident Commander Robot & Companion Visual ─── */}
+        <motion.div
+          animate={{
+            y: isLive ? [0, -8, 0] : isHovered ? -4 : [0, -6, 0],
+            scale: isCharging ? [1, 1.04, 1] : [1, 1.015, 1],
           }}
-        />
+          transition={{
+            y: { duration: 4.8, repeat: Infinity, ease: 'easeInOut' },
+            scale: { duration: 3.6, repeat: Infinity, ease: 'easeInOut' }
+          }}
+          className="relative z-15 w-[92%] h-[92%] flex items-center justify-center pointer-events-none"
+        >
+          <img
+            src={heroRobotImg}
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (target.src !== heroRobotWebp) {
+                target.src = heroRobotWebp;
+              }
+            }}
+            alt="EchoAid X AI Incident Commander Robot Companion"
+            className="w-full h-full object-contain object-center select-none"
+            style={{
+              maskImage: 'radial-gradient(circle at 50% 48%, black 65%, rgba(0,0,0,0.85) 82%, transparent 98%)',
+              WebkitMaskImage: 'radial-gradient(circle at 50% 48%, black 65%, rgba(0,0,0,0.85) 82%, transparent 98%)',
+              filter: isLive 
+                ? 'brightness(1.08) contrast(1.05) drop-shadow(0 0 35px rgba(0,217,255,0.65))'
+                : 'brightness(1.02) contrast(1.02) drop-shadow(0 0 25px rgba(0,217,255,0.38))',
+            }}
+          />
+
+          {/* Glowing AI Core Chest / Cranial Beacon Pulse */}
+          <motion.div
+            animate={{
+              scale: isLive ? [1, 1.35, 1] : [1, 1.18, 1],
+              opacity: isLive ? [0.6, 0.95, 0.6] : [0.4, 0.75, 0.4],
+            }}
+            transition={{
+              duration: 2.2,
+              repeat: Infinity,
+              ease: 'easeInOut'
+            }}
+            className="absolute top-[32%] left-[54%] -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-cyan-400/40 blur-xl pointer-events-none mix-blend-screen"
+          />
+        </motion.div>
 
       </motion.div>
 
