@@ -285,7 +285,7 @@ class AgoraVoiceService {
         this.state.status = 'CONNECTING';
         this.notify();
 
-        const apiBase = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
+        const apiBase = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'https://incident-ih39.onrender.com').replace(/\/+$/, '');
         const channelName = import.meta.env.VITE_AGORA_CHANNEL || 'echoaid-room';
         const defaultAppId = import.meta.env.VITE_AGORA_APP_ID || '';
 

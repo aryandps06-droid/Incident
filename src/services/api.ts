@@ -1,7 +1,7 @@
 import type { TriageResponse, Incident, EmergencyContact, MedicalProfile, UserSettings, SystemHealth } from '../types';
 
-const RAW_API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || '';
-const API_BASE_URL = RAW_API_BASE ? `${RAW_API_BASE.replace(/\/+$/, '')}/api` : '/api';
+const RAW_API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'https://incident-ih39.onrender.com';
+const API_BASE_URL = RAW_API_BASE ? `${RAW_API_BASE.replace(/\/+$/, '')}/api` : 'https://incident-ih39.onrender.com/api';
 
 export interface NvidiaStatusPayload {
   configured: boolean;
@@ -88,12 +88,20 @@ export const apiService = {
   /**
    * POST /api/chat — Live NVIDIA NIM AI Emergency Reasoning
    */
-  async sendNvidiaChat(messages: Array<{ role: string; content: string }>): Promise<NvidiaChatResponse> {
+  async sendNvidiaChat(
+    messages: Array<{ role: string; content: string }>,
+    options?: { sessionId?: string; patientStatus?: string; location?: string }
+  ): Promise<NvidiaChatResponse> {
     try {
       const res = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({
+          messages,
+          session_id: options?.sessionId || `sess-${Date.now()}`,
+          patient_status: options?.patientStatus || 'Conscious',
+          location: options?.location || 'Live Room / War Room',
+        }),
       });
       if (!res.ok) throw new Error(`NVIDIA Chat HTTP ${res.status}`);
       return await res.json();
