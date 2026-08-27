@@ -1,637 +1,468 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Variants } from 'framer-motion';
+import { 
+  Radio, 
+  ArrowRight, 
+  CheckCircle2, 
+  Clock, 
+  Mic, 
+  Server, 
+  Users, 
+  Sparkles, 
+  Terminal,
+  ShieldAlert,
+  GitBranch,
+  Layers,
+  LogOut
+} from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
-import { AuroraLayer } from '../home/AuroraLayer';
-import { StarParticlesLayer } from '../home/StarParticlesLayer';
-import { HUDRingsLayer } from '../home/HUDRingsLayer';
-import { ECGAccentsLayer } from '../home/ECGAccentsLayer';
-import { NeuralBrainPulsesLayer } from '../home/NeuralBrainPulsesLayer';
-import { AIOrb } from '../home/AIOrb';
-import { BottomRightAIAssistant } from '../home/BottomRightAIAssistant';
-import { PhoneCall, MapPin, Stethoscope, Users, Lock, Shield, Sparkles } from 'lucide-react';
-
-const LinkedinIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
-  <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-    <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.25V10.9H6.46M7.86 6.77a1.64 1.64 0 1 0 0 3.28 1.64 1.64 0 0 0 0-3.28Z" />
-  </svg>
-);
+import { useAuth } from '../../context/AuthContext';
+import { NeuralAIFigure } from '../home/NeuralAIFigure';
 
 export const LandingScreen: React.FC = () => {
   const { 
-    screenState,
     startConversation, 
-    setActiveModal, 
     isListening, 
     isSpeaking, 
-    isAnalyzing,
-    isUserSpeaking,
-    isAISpeaking,
-    isEmergencyActive
+    isAnalyzing, 
+    isUserSpeaking, 
+    isAISpeaking, 
+    agoraStatus 
   } = useEmergency();
 
-  const isSessionActive = screenState !== 'landing';
+  const { user, isAuthenticated, signOut } = useAuth();
 
-  // SECTION 2: Dynamic greeting based on real current time
-  // EASTER EGG 1: Logo 5-Click Handler
-  const [logoClickCount, setLogoClickCount] = useState(0);
-  const [showEasterEggToast, setShowEasterEggToast] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [activeTab, setActiveTab] = useState<'problem' | 'capabilities' | 'scenario'>('problem');
 
-  // Requirement 15: Zero-Lag GPU Parallax via direct rAF DOM mutation (0 React re-renders on mousemove)
-  useEffect(() => {
-    let rafId: number;
-    const handleMouseMove = (e: MouseEvent) => {
-      cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
-        const offsetX = ((e.clientX - centerX) / centerX) * 2.5; // Max ±2.5px
-        const offsetY = ((e.clientY - centerY) / centerY) * 2.5; // Max ±2.5px
-        const stageEl = document.getElementById('parallax-brain-stage');
-        if (stageEl) {
-          stageEl.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
-        }
-      });
-    };
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      cancelAnimationFrame(rafId);
-    };
-  }, []);
+  const isVoiceActive = isListening || isSpeaking || isAnalyzing || isUserSpeaking || isAISpeaking || agoraStatus === 'CONNECTED';
 
-  // EASTER EGG 2: Brain Click Neural Pulse Handler
-  const [brainClickActive, setBrainClickActive] = useState(false);
-  const handleBrainClick = () => {
-    setBrainClickActive(true);
-    setTimeout(() => setBrainClickActive(false), 1600);
+  // Dynamic AI status label
+  const getAIStateBadge = () => {
+    if (isAnalyzing) return { text: 'ANALYZING CONTEXT', color: 'text-purple-400 bg-purple-950/60 border-purple-500/30' };
+    if (isUserSpeaking || isListening) return { text: 'LISTENING TO WAR ROOM', color: 'text-cyan-400 bg-cyan-950/60 border-cyan-500/30' };
+    if (isAISpeaking || isSpeaking) return { text: 'SPOKEN STATUS SUMMARY', color: 'text-indigo-400 bg-indigo-950/60 border-indigo-500/30' };
+    return { text: 'INCIDENT INTELLIGENCE ACTIVE', color: 'text-emerald-400 bg-emerald-950/60 border-emerald-500/30' };
   };
 
-  const handleLogoClick = () => {
-    const next = logoClickCount + 1;
-    setLogoClickCount(next);
-    if (next >= 5) {
-      setShowEasterEggToast(true);
-      setLogoClickCount(0);
-      setTimeout(() => setShowEasterEggToast(false), 4000);
-    }
+  const aiStatus = getAIStateBadge();
+
+  // Handler for Directly Joining Incident Room (No Login Barrier)
+  const handleJoinIncidentRoom = (initialPrompt?: string) => {
+    // Enter room directly - Agora AI Agent will speak its greeting once over Agora RTC audio
+    startConversation(initialPrompt);
   };
-
-  const getDynamicGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return { main: "Good Morning.", sub: "What's happening right now?" };
-    if (hour >= 12 && hour < 17) return { main: "Good Afternoon.", sub: "What's happening right now?" };
-    if (hour >= 17 && hour < 21) return { main: "Good Evening.", sub: "What's happening right now?" };
-    return { main: "Good Evening.", sub: "What's happening right now?" };
-  };
-
-  const dynamicGreeting = getDynamicGreeting();
-
-  // LIVE CLOCK — updates every second
-  const [liveTime, setLiveTime] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setLiveTime(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const clockTime = liveTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-  const clockDate = liveTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-  // SCANNER SWEEP — every 12s cinematic light across brain
-  const [scannerActive, setScannerActive] = useState(false);
-  useEffect(() => {
-    const loop = setInterval(() => {
-      setScannerActive(true);
-      setTimeout(() => setScannerActive(false), 2000);
-    }, 12000);
-    return () => clearInterval(loop);
-  }, []);
-
-  // SECTION 1: Page Load Entrance Sequence (1.4s with cubic-bezier(0.22, 1, 0.36, 1))
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.18,
-        delayChildren: 0.1,
-        duration: 1.4,
-        ease: [0.22, 1, 0.36, 1]
-      },
-    },
-  };
-
-  const line1Variants: Variants = {
-    hidden: { opacity: 0, y: 16, filter: 'blur(10px)' },
-    visible: {
-      opacity: 1,
-      y: 0,
-      filter: 'blur(0px)',
-      transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] }
-    }
-  };
-
-  const line3Variants: Variants = {
-    hidden: { opacity: 0, y: 16, filter: 'blur(10px)' },
-    visible: {
-      opacity: 1,
-      y: 0,
-      filter: 'blur(0px)',
-      transition: { duration: 0.7, delay: 0.36, ease: [0.22, 1, 0.36, 1] }
-    }
-  };
-
-  const orbVariants: Variants = {
-    hidden: { opacity: 0, scale: 0.85 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: { duration: 0.7, delay: 0.54, ease: [0.22, 1, 0.36, 1] }
-    }
-  };
-
-  const cardsVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.6, delay: 0.72, ease: [0.22, 1, 0.36, 1] }
-    }
-  };
-
-  const quickActions = [
-    {
-      id: 'ambulance',
-      title: 'Call Ambulance',
-      subtitle: 'Instant 911 / 108 Dispatch',
-      icon: <PhoneCall className="w-4 h-4 text-red-400" />,
-      color: 'border-white/15 hover:border-red-500/60 bg-white/[0.04] hover:bg-red-500/10 shadow-glow-red/20',
-      action: () => startConversation('Emergency: Need immediate ambulance dispatch')
-    },
-    {
-      id: 'location',
-      title: 'Share Location',
-      subtitle: 'Live GPS Broadcast',
-      icon: <MapPin className="w-4 h-4 text-cyan-400" />,
-      color: 'border-white/15 hover:border-cyan-400/60 bg-white/[0.04] hover:bg-cyan-500/10 shadow-glow-brand/20',
-      action: () => startConversation('Sharing live location for emergency assistance')
-    },
-    {
-      id: 'medical-id',
-      title: 'Medical ID',
-      subtitle: 'View Profile & Allergies',
-      icon: <Stethoscope className="w-4 h-4 text-purple-400" />,
-      color: 'border-white/15 hover:border-purple-500/60 bg-white/[0.04] hover:bg-purple-500/10 shadow-glow-purple/20',
-      action: () => setActiveModal('medical-id')
-    },
-    {
-      id: 'contacts',
-      title: 'Emergency Contacts',
-      subtitle: 'Notify Loved Ones',
-      icon: <Users className="w-4 h-4 text-emerald-400" />,
-      color: 'border-white/15 hover:border-emerald-500/60 bg-white/[0.04] hover:bg-emerald-500/10 shadow-glow-emerald/20',
-      action: () => setActiveModal('contacts')
-    },
-  ];
 
   return (
-    <div className="relative min-h-screen bg-[#03050F] overflow-hidden text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
-
-      {/* 10. AI ASSISTANT: Floating Bottom-Right Assistant Orb & Conversation Drawer */}
-      <BottomRightAIAssistant />
-
-      {/* SECTION 1: Deep Dark Space Starfield Layer + Ambient Light Particles */}
-      <StarParticlesLayer />
+    <div className="relative h-screen max-h-screen w-full bg-[#020305] text-slate-100 font-sans selection:bg-cyan-500/20 selection:text-cyan-200 antialiased overflow-hidden flex flex-col justify-between select-none">
       
-      {/* SECTION 1: Faint Noise Texture Overlay (2% Opacity) */}
-      <div 
-        className="absolute inset-0 z-1 pointer-events-none opacity-[0.02] mix-blend-overlay"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
-        }}
-      />
-
-      {/* Seamless Fluid Deep Space Background */}
-      <div 
-        className="absolute inset-0 z-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at 70% 30%, #081a38 0%, #050b1e 50%, #02030a 100%)'
-        }}
-      />
-
-      {/* SECTION 2: 3 Independent Volumetric Aurora Borealis Layers */}
-      <AuroraLayer />
-
-      {/* ECG Heartbeat Accent Lines */}
-      <ECGAccentsLayer />
-
-      {/* SECTION 2: Live Atmospheric Lighting & Soft Vignette */}
-      <motion.div 
-        animate={{
-          opacity: isSessionActive ? 0.9 : 0.65
-        }}
-        transition={{ duration: 1 }}
-        className="absolute inset-0 z-3 pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle at 30% 40%, rgba(0, 229, 255, 0.15) 0%, transparent 60%), radial-gradient(circle at 75% 35%, rgba(217, 70, 239, 0.2) 0%, transparent 55%), radial-gradient(ellipse at center, transparent 50%, rgba(2, 3, 10, 0.7) 100%)'
-        }}
-      />
-
-      {/* SECTION 4: Right Side Holographic Head & MRI Brain Visualization (Seamless full-canvas blend, zero seam line) */}
-      <motion.div 
-        id="parallax-brain-stage"
-        animate={{
-          scale: brainClickActive ? [1, 1.03, 1] : [1, 1.005, 1]
-        }}
-        transition={{ duration: brainClickActive ? 0.4 : 6, repeat: brainClickActive ? 2 : Infinity, ease: 'easeInOut' }}
-        onClick={handleBrainClick}
-        title="Click Brain for Neural Pulse Surge"
-        className="absolute inset-0 w-full h-full z-4 pointer-events-auto cursor-pointer flex items-center justify-end overflow-hidden"
-        style={{
-          willChange: 'transform'
-        }}
-      >
-        <div className="relative w-full h-full max-h-screen flex items-center justify-end">
-          
-          {/* Easter Egg 2: Neural Spark Pulse Overlay on Click */}
-          <AnimatePresence>
-            {brainClickActive && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: [0.2, 0.8, 0], scale: [0.9, 1.3, 1.5] }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 1.4, ease: 'easeOut' }}
-                className="absolute top-[20%] right-[25%] w-64 h-64 rounded-full bg-cyan-400/30 blur-3xl pointer-events-none z-30"
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Depth Shadow Behind Holographic Head */}
-          <div className="absolute inset-0 w-full h-full bg-radial-vignette opacity-30 pointer-events-none" />
-
-          {/* Requirement 13: Light Refraction Mesh (Aurora colors soft bend across skull) */}
-          <motion.div 
-            animate={{
-              opacity: [0.15, 0.35, 0.15],
-              rotate: [0, 15, 0]
-            }}
-            transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute top-[10%] right-[15%] w-[45%] h-[75%] rounded-full bg-gradient-to-tr from-cyan-500/10 via-purple-500/10 to-pink-500/10 blur-3xl pointer-events-none mix-blend-screen"
-          />
-
-          {/* Holographic Head & Brain Image with ultra-smooth 5-stop horizontal blend mask to erase all seam lines */}
-          <img
-            src="/assets/hero.webp"
-            alt="EchoAid X Holographic Glass Head & Brain Artwork"
-            className="h-full w-auto max-w-none object-contain object-right z-0 pointer-events-none opacity-100 mix-blend-lighten filter brightness-125 contrast-105 drop-shadow-[0_20px_50px_rgba(0,0,0,0.9)]"
-            style={{
-              maskImage: 'linear-gradient(to right, transparent 0%, transparent 30%, rgba(0,0,0,0.3) 42%, rgba(0,0,0,0.8) 58%, black 78%)',
-              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, transparent 30%, rgba(0,0,0,0.3) 42%, rgba(0,0,0,0.8) 58%, black 78%)'
-            }}
-          />
-
-          {/* Brain Glow & Neural Pulses Overlays */}
-          <div className="absolute inset-0 w-full h-full flex items-center justify-end pointer-events-none z-1">
-            <div className="relative w-[520px] h-[520px] lg:w-[600px] lg:h-[600px] max-h-screen flex items-center justify-center">
-              
-              {/* 1. Soft Cyan Rim Light around Skull Edge */}
-              <div className="absolute w-[46%] h-[46%] top-[18%] right-[22%] rounded-full border border-cyan-400/25 shadow-[0_0_50px_rgba(0,229,255,0.3)] pointer-events-none" />
-
-              {/* 2. Soft Purple Inner Glow Behind Brain */}
-              <div className="absolute w-[40%] h-[40%] top-[20%] right-[24%] rounded-full bg-purple-900/35 blur-3xl pointer-events-none" />
-
-              {/* 3. Requirement 3: Brain Glow Breathing Pulse (6-second infinite loop 1 -> 1.005 -> 1) */}
-              <motion.div 
-                animate={{
-                  scale: isAISpeaking || isAnalyzing ? [1, 1.15, 1] : [1, 1.005, 1],
-                  opacity: isAISpeaking ? [0.8, 1, 0.8] : [0.65, 0.85, 0.65]
-                }}
-                transition={{ duration: isAISpeaking || isAnalyzing ? 1.4 : 6.0, repeat: Infinity, ease: 'easeInOut' }}
-                className="absolute w-[40%] h-[40%] top-[20%] right-[24%] rounded-full bg-radial-brain-glow pointer-events-none" 
-              />
-              
-              {/* 4. REAL ANATOMICAL SVG NEURAL LIGHT PULSES LAYER (Requirement 1, 2, 5, 6, 7, 8, 11, 12, 14, 16, 17) */}
-              <NeuralBrainPulsesLayer />
-
-              {/* 5. Requirement 4: Holographic Depth Glass Reflection Sweep */}
-              <motion.div 
-                animate={{
-                  x: ['-100%', '180%'],
-                  opacity: [0, 0.35, 0]
-                }}
-                transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-                className="absolute inset-y-0 right-0 w-32 bg-gradient-to-r from-transparent via-cyan-300/15 to-transparent pointer-events-none rotate-12 blur-sm" 
-              />
-
-              {/* 6. Requirement 7: Diagonal Medical Scanning Light Beam */}
-              <motion.div
-                animate={{
-                  y: ['-120%', '160%'],
-                  opacity: [0, 0.5, 0]
-                }}
-                transition={{ duration: 12, repeat: Infinity, repeatDelay: 8, ease: 'easeInOut' }}
-                className="absolute inset-x-0 h-[120px] bg-gradient-to-b from-transparent via-cyan-400/25 to-transparent blur-[40px] pointer-events-none -rotate-12"
-              />
-
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* SECTION 3: Medical Concentric Scanning HUD Layer */}
-      <HUDRingsLayer />
-
-      {/* CINEMATIC SCANNER SWEEP — every 12s a light races across the brain */}
-      <AnimatePresence>
-        {scannerActive && (
-          <motion.div
-            key="scanner"
-            initial={{ x: '-10%', opacity: 0 }}
-            animate={{ x: '110%', opacity: [0, 0.18, 0.18, 0] }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.8, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute top-0 right-0 w-[55%] h-full z-5 pointer-events-none"
-            style={{
-              background: 'linear-gradient(105deg, transparent 20%, rgba(0,229,255,0.25) 50%, transparent 80%)',
-              filter: 'blur(18px)',
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Primary Interactive Stage Layer (z-index 20) */}
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="relative z-20 h-screen max-h-screen flex flex-col justify-between p-3 sm:p-4 lg:px-7 lg:py-3.5 max-w-[1920px] mx-auto pointer-events-auto overflow-hidden"
-      >
+      {/* ─── LIVE OPERATIONAL NETWORK BACKGROUND ─── */}
+      <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+        <div 
+          className="absolute top-[-10%] right-[10%] w-[600px] h-[600px] rounded-full blur-[140px] opacity-25 pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(0,217,255,0.22) 0%, rgba(99,102,241,0.12) 45%, transparent 70%)' }}
+        />
+        <div 
+          className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full blur-[150px] opacity-15 pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.18) 0%, rgba(14,165,233,0.1) 50%, transparent 70%)' }}
+        />
         
-        {/* Top Header Bar */}
-        <header className="flex flex-wrap items-center justify-between gap-3 z-30 shrink-0">
-          
-          {/* Top Left Logo & Subtitle — Easter Egg 1: Click 5 Times */}
-          <div 
-            onClick={handleLogoClick} 
-            className="flex items-center gap-2.5 cursor-pointer group select-none relative"
-            title="Click 5 times for Easter Egg"
-          >
-            <div className="w-8 h-8 rounded-xl bg-[#00E5FF]/15 border border-[#00E5FF]/50 flex items-center justify-center text-[#00E5FF] shadow-[0_0_15px_rgba(0,229,255,0.4)] backdrop-blur-xl transition-all duration-300 group-hover:scale-105 group-hover:border-cyan-400">
-              <Shield className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-[20px] font-black tracking-tight text-white font-sans flex items-center gap-1.5 leading-none">
-                EchoAid
-                <span className="bg-gradient-to-r from-[#00E5FF] via-[#A855F7] to-[#D946EF] bg-clip-text text-transparent">X</span>
-              </div>
-              <div className="text-[8.5px] font-mono text-slate-400 tracking-[0.22em] uppercase mt-0.5">
-                AI Emergency Companion
-              </div>
-            </div>
+        <div 
+          className="absolute inset-0 opacity-[0.03] pointer-events-none"
+          style={{
+            backgroundImage: `linear-gradient(rgba(0, 217, 255, 0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 217, 255, 0.25) 1px, transparent 1px)`,
+            backgroundSize: '32px 32px'
+          }}
+        />
 
-            {/* Easter Egg Toast Notification */}
-            <AnimatePresence>
-              {showEasterEggToast && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.9 }}
-                  className="absolute top-12 left-0 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/30 to-purple-600/30 border border-cyan-400/50 backdrop-blur-xl text-xs font-semibold text-white shadow-[0_0_20px_rgba(0,229,255,0.4)] whitespace-nowrap z-50 flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-300 animate-spin" />
-                  <span>Built with ❤️ by CosmicNexus</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+        <div 
+          className="absolute inset-0 opacity-[0.015] pointer-events-none"
+          style={{
+            backgroundImage: `repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.3) 0px, rgba(255, 255, 255, 0.3) 1px, transparent 1px, transparent 3px)`
+          }}
+        />
+      </div>
+
+      {/* ─── TOP SYSTEM & INCIDENT ROOM STATUS BAR ─── */}
+      <header className="relative z-30 w-full px-5 sm:px-8 lg:px-10 py-2.5 flex items-center justify-between border-b border-white/[0.06] bg-[#020305]/85 backdrop-blur-2xl shrink-0">
+        
+        {/* Brand & Mission Positioning */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500/20 via-blue-600/30 to-indigo-600/20 border border-cyan-500/40 flex items-center justify-center shadow-md shadow-cyan-950/50">
+            <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
           </div>
-
-          {/* Top Right Header Badges & Clean Team Signature */}
-          <div className="flex items-center gap-2 font-sans">
-
-            {/* Live Clock — real OS-like feel */}
-            <div className="hidden sm:flex flex-col items-end mr-1">
-              <span className="text-[12px] font-mono font-semibold text-white/90 leading-none tabular-nums">{clockTime}</span>
-              <span className="text-[8.5px] font-mono text-slate-500 leading-none mt-0.5">{clockDate}</span>
-            </div>
-
-            <div className="w-px h-5 bg-white/10" />
-
-            {/* CosmicNexus team badge — Easter Egg 3: Open About Modal */}
-            <motion.button
-              onClick={() => setActiveModal('cosmicnexus')}
-              whileHover={{ y: -1, scale: 1.03 }}
-              aria-label="About CosmicNexus"
-              className="px-3 py-1 rounded-full bg-white/[0.04] border border-white/12 hover:bg-white/[0.07] hover:border-cyan-400/40 backdrop-blur-[12px] text-[#C8D4F0] text-[11px] font-medium tracking-[0.025em] transition-all duration-200 cursor-pointer font-sans shrink-0 group relative overflow-hidden"
-            >
-              <span className="relative z-10">CosmicNexus</span>
-              <span className="absolute bottom-0 left-0 w-full h-[1px] bg-cyan-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
-            </motion.button>
-
-            <div className="w-px h-5 bg-white/10" />
-
-            {/* DYNAMIC STATUS PILL (2. DYNAMIC STATUS & 9. EMERGENCY READINESS) */}
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono backdrop-blur-xl border transition-all duration-300 ${
-              isEmergencyActive
-                ? 'bg-red-500/15 border-red-400/40 text-red-300 shadow-[0_0_12px_rgba(239,68,68,0.3)]'
-                : isUserSpeaking || isListening
-                  ? 'bg-cyan-500/15 border-cyan-400/40 text-cyan-300 shadow-[0_0_12px_rgba(0,229,255,0.3)]'
-                  : isAnalyzing
-                    ? 'bg-purple-500/15 border-purple-400/40 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.3)]'
-                    : isAISpeaking || isSpeaking
-                      ? 'bg-cyan-500/15 border-cyan-400/40 text-cyan-300 shadow-[0_0_12px_rgba(0,229,255,0.3)]'
-                      : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
-            }`}>
-              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isEmergencyActive ? 'bg-red-400 animate-ping' : 'bg-emerald-400 animate-pulse'}`} />
-              <span>
-                {isEmergencyActive
-                  ? '🚑 Emergency Active'
-                  : isUserSpeaking || isListening
-                    ? '🎤 Listening...'
-                    : isAnalyzing
-                      ? '🧠 Analyzing...'
-                      : isAISpeaking || isSpeaking
-                        ? '💬 Responding...'
-                        : '● Ready to Assist'}
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[17px] font-bold tracking-tight text-white select-none">
+                EchoAid <span className="text-cyan-400">X</span>
+              </span>
+              <span className="text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.2 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
+                COMMANDER v2.5
               </span>
             </div>
-
+            <span className="text-[9px] font-medium tracking-wider uppercase text-slate-400 font-mono">
+              AI Incident Commander
+            </span>
           </div>
-        </header>
-
-        {/* Main Stage Grid */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center my-auto w-full">
-          
-          {/* Left Panel (~42% Width): Morphs Smoothly When Mic Pressed */}
-          <div className="lg:col-span-5 flex flex-col justify-center space-y-2 lg:space-y-2.5 text-left max-w-xl z-20">
-            
-            {/* Status pill — clean and minimal */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="w-fit"
-            >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/10 backdrop-blur-xl">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-                </span>
-                <span className="text-[11px] font-sans font-medium text-slate-300 tracking-wide">Real-time AI Emergency Companion</span>
-              </div>
-            </motion.div>
-
-            {/* SECTION 6: Hero Text Premium Typography (font-weight: 800, line-height: 0.92, letter-spacing: -0.04em, text-shadow) */}
-            <div className="space-y-0.5">
-              <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-white tracking-[-0.04em] font-sans leading-[0.94] drop-shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
-                
-                <AnimatePresence mode="wait">
-                  {!isSessionActive ? (
-                    <motion.div 
-                      key="landing-headline"
-                      initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
-                      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      <motion.span variants={line1Variants} className="block">
-                        {dynamicGreeting.main}
-                      </motion.span>
-
-                      <motion.span 
-                        variants={line3Variants}
-                        className="inline-block bg-gradient-to-r from-[#35E0FF] via-[#7C7DFF] to-[#E44DFF] bg-clip-text text-transparent animate-hero-gradient-shift filter drop-shadow-[0_0_25px_rgba(0,229,255,0.5)]"
-                      >
-                        {dynamicGreeting.sub}
-                      </motion.span>
-                    </motion.div>
-                  ) : (
-                    <motion.div 
-                      key="active-headline"
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -15 }}
-                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      <span className="block text-2xl font-mono text-cyan-400 tracking-widest uppercase font-bold">
-                        {isUserSpeaking ? 'Listening...' : isAnalyzing ? 'Analyzing Symptoms...' : isAISpeaking ? 'EchoAid Responding...' : 'Session Active'}
-                      </span>
-                      <span className="block text-3xl font-extrabold text-white">
-                        Describe the emergency.
-                      </span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-              </h1>
-
-              {/* Sub-text Description */}
-              <p className="text-xs sm:text-sm text-slate-200 font-sans max-w-md pt-0.5 leading-relaxed opacity-95 font-normal drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]">
-                {isSessionActive 
-                  ? 'Speak naturally to EchoAid X. Automatic ambulance & emergency response dispatch active.' 
-                  : 'Your AI emergency companion designed to assist, guide, and protect when every second counts.'}
-              </p>
-
-              {/* Trust indicators — credibility row */}
-              {!isSessionActive && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.9, duration: 0.5 }}
-                  className="flex items-center gap-3 pt-1 flex-wrap"
-                >
-                  {[
-                    { icon: '🎙️', label: 'Real-time voice support' },
-                    { icon: '📍', label: 'Live location sharing' },
-                    { icon: '🔒', label: 'Private by design' },
-                  ].map((item, i) => (
-                    <span key={i} className="flex items-center gap-1 text-[10px] text-slate-500 font-sans">
-                      {i > 0 && <span className="w-px h-3 bg-white/10 mr-2" />}
-                      <span>{item.icon}</span>
-                      <span>{item.label}</span>
-                    </span>
-                  ))}
-                </motion.div>
-              )}
-            </div>
-
-            {/* Quick chips removed — conversation starts naturally */}
-
-            {/* SECTION 7: Holographic AI Voice Core Orb */}
-            <motion.div variants={orbVariants} className="relative flex flex-col justify-start items-center gap-2 w-full max-w-md my-0">
-              <div className="w-full flex justify-center">
-                <AIOrb />
-              </div>
-            </motion.div>
-
-            {/* SECTION 8: Quick Action Cards Grid */}
-            <motion.div variants={cardsVariants} className="grid grid-cols-2 gap-2.5 w-full pt-0.5">
-              {quickActions.map((act) => (
-                <motion.div
-                  key={act.id}
-                  whileHover={{ y: -2, scale: 1.01 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={act.action}
-                  role="button"
-                  aria-label={act.title}
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && act.action()}
-                  className={`relative overflow-hidden p-2.5 rounded-xl backdrop-blur-[18px] border transition-all duration-300 cursor-pointer ${act.color} flex items-center gap-2.5 group shadow-card-soft hover:border-l-2 hover:border-l-cyan-400 glass-shimmer`}
-                >
-                  <div className="p-1.5 rounded-lg bg-white/[0.06] border border-white/10 group-hover:border-cyan-400/50 shrink-0">
-                    {act.icon}
-                  </div>
-                  <div className="text-left min-w-0">
-                    <div className="text-xs font-bold text-white font-sans group-hover:text-cyan-300 transition-colors truncate">{act.title}</div>
-                    <div className="text-[9px] text-slate-400 font-sans truncate mt-0.5">{act.subtitle}</div>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-
-          </div>
-
-          {/* Right Column Spacer */}
-          <div className="lg:col-span-7 flex items-center justify-end relative w-full h-full min-h-[480px] lg:min-h-[600px] pointer-events-none" />
-
         </div>
 
-        {/* SECTION 12: Premium Footer */}
-        <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-3 pb-1 shrink-0 z-20">
-
-          {/* LEFT — Privacy badge */}
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 backdrop-blur-xl">
-            <Lock className="w-3 h-3 text-emerald-400 shrink-0" />
-            <span className="text-[11px] font-sans font-medium text-slate-300">Your data is private &amp; secure</span>
+        {/* Room & Status Pill */}
+        <div className="flex items-center gap-2.5">
+          
+          {/* Room ID Tag */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.03] border border-white/[0.07] text-[10px] font-mono text-slate-300">
+            <Server className="w-3 h-3 text-cyan-400" />
+            <span>ROOM: <span className="text-white font-bold">SEV1-WAR-ROOM</span></span>
           </div>
 
-          {/* RIGHT — Founder + LinkedIn */}
-          <div className="flex items-center gap-3">
+          {/* User Profile If Logged In */}
+          {isAuthenticated && user && (
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-950/40 to-indigo-950/30 border border-cyan-500/40 hover:border-cyan-400 transition-all cursor-pointer backdrop-blur-xl"
+              >
+                <img
+                  src={user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.displayName}`}
+                  alt={user.displayName}
+                  className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-400/50"
+                />
+                <div className="flex flex-col text-left">
+                  <span className="text-[11px] font-bold text-white leading-tight truncate max-w-[110px]">
+                    {user.displayName}
+                  </span>
+                  <span className="text-[8px] font-mono text-cyan-300 leading-tight truncate max-w-[110px]">
+                    {user.role}
+                  </span>
+                </div>
+              </button>
 
-            {/* Crafted by badge */}
+              {/* User Dropdown Menu */}
+              <AnimatePresence>
+                {showUserMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-2 w-52 rounded-xl bg-[#060913] border border-cyan-500/30 p-2 shadow-2xl z-50 flex flex-col gap-1 font-mono text-xs"
+                  >
+                    <button
+                      onClick={() => {
+                        signOut();
+                        setShowUserMenu(false);
+                      }}
+                      className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-red-500/10 text-red-400 transition-colors cursor-pointer w-full text-left text-[10px]"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out</span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* System Live Pill */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 backdrop-blur-xl">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+            </span>
+            <span className="text-[9px] font-semibold tracking-wider text-emerald-300 uppercase font-mono">
+              ONLINE
+            </span>
+          </div>
+
+        </div>
+      </header>
+
+      {/* ─── MAIN HERO AREA (TWO COLUMNS: 80% COMPACT SCALE) ─── */}
+      <main className="relative z-10 flex-1 max-w-[1550px] w-full mx-auto px-5 sm:px-8 lg:px-10 flex flex-col lg:flex-row items-center justify-between gap-6 py-2">
+        
+        {/* ─── LEFT COLUMN: EXACT PROBLEM STATEMENT & DEMONSTRATED CAPABILITIES ─── */}
+        <div className="flex-1 max-w-xl flex flex-col justify-center text-left z-20">
+          
+          {/* Subtitle Badge */}
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/70 border border-cyan-500/40 text-cyan-300 text-[10px] font-mono tracking-wider uppercase mb-2.5 shadow-sm shadow-cyan-950 self-start"
+          >
+            <Terminal className="w-3 h-3 text-cyan-400 animate-pulse" />
+            <span>Operational War Room AI</span>
+            <span className="w-1 h-1 rounded-full bg-cyan-400" />
+            <span className="text-white font-semibold">Evidence-First</span>
+          </motion.div>
+
+          {/* Main Title */}
+          <motion.h1 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.05 }}
+            className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight font-sans mb-1.5"
+          >
+            Real-Time AI <br className="hidden sm:inline" />
+            <span className="bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 bg-clip-text text-transparent">
+              Incident Commander
+            </span>
+          </motion.h1>
+
+          {/* 3-Tab Problem Statement, 8 Requirements & Outage Scenario Module */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="p-3.5 rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.015] border border-cyan-500/20 backdrop-blur-xl shadow-2xl mb-3 flex flex-col gap-2.5"
+          >
+            {/* Tab Buttons */}
+            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/[0.06] text-[10.5px] font-mono">
+              <button
+                onClick={() => setActiveTab('problem')}
+                className={`flex-1 py-1.5 rounded-lg font-bold transition-all cursor-pointer text-center ${
+                  activeTab === 'problem' 
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                THE MISSION
+              </button>
+              <button
+                onClick={() => setActiveTab('capabilities')}
+                className={`flex-1 py-1.5 rounded-lg font-bold transition-all cursor-pointer text-center ${
+                  activeTab === 'capabilities' 
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                8 REQUIREMENTS
+              </button>
+              <button
+                onClick={() => setActiveTab('scenario')}
+                className={`flex-1 py-1.5 rounded-lg font-bold transition-all cursor-pointer text-center ${
+                  activeTab === 'scenario' 
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                OUTAGE SCENARIO
+              </button>
+            </div>
+
+            {/* Tab 1: Verbatim Mission & Thesis */}
+            {activeTab === 'problem' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-[11px] text-slate-300 leading-relaxed font-mono flex flex-col gap-1.5"
+              >
+                <p className="text-cyan-200/90 font-medium">
+                  EchoAid X joins live operational or technical incident rooms to listen to team discussions, organize information, and help maintain a shared understanding.
+                </p>
+                <div className="grid grid-cols-2 gap-1.5 text-[10px] text-slate-300 pt-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3 h-3 text-cyan-400 shrink-0" />
+                    <span>Distinguish facts vs assumptions</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3 h-3 text-indigo-400 shrink-0" />
+                    <span>Continuous live timeline</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span>Track decision &amp; action ownership</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <ShieldAlert className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span>Human confirmation for rollbacks</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Tab 2: The 8 Demonstrated Capabilities Grid */}
+            {activeTab === 'capabilities' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="grid grid-cols-2 gap-1 text-[10px] font-mono leading-snug"
+              >
+                <div className="p-1.5 rounded-md bg-cyan-950/30 border border-cyan-500/20 flex items-center gap-1.5 text-slate-200">
+                  <Mic className="w-3 h-3 text-cyan-400 shrink-0" />
+                  <span>Real-time voice participation</span>
+                </div>
+
+                <div className="p-1.5 rounded-md bg-indigo-950/30 border border-indigo-500/20 flex items-center gap-1.5 text-slate-200">
+                  <Users className="w-3 h-3 text-indigo-400 shrink-0" />
+                  <span>Participant role recognition</span>
+                </div>
+
+                <div className="p-1.5 rounded-md bg-emerald-950/30 border border-emerald-500/20 flex items-center gap-1.5 text-slate-200">
+                  <GitBranch className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <span>Extract facts, hypotheses &amp; actions</span>
+                </div>
+
+                <div className="p-1.5 rounded-md bg-purple-950/30 border border-purple-500/20 flex items-center gap-1.5 text-slate-200">
+                  <CheckCircle2 className="w-3 h-3 text-purple-400 shrink-0" />
+                  <span>Assign &amp; track task ownership</span>
+                </div>
+
+                <div className="p-1.5 rounded-md bg-amber-950/30 border border-amber-500/20 flex items-center gap-1.5 text-slate-200">
+                  <ShieldAlert className="w-3 h-3 text-amber-400 shrink-0" />
+                  <span>Detect missing/conflicting info</span>
+                </div>
+
+                <div className="p-1.5 rounded-md bg-blue-950/30 border border-blue-500/20 flex items-center gap-1.5 text-slate-200">
+                  <Clock className="w-3 h-3 text-blue-400 shrink-0" />
+                  <span>Continuous incident timeline</span>
+                </div>
+
+                <div className="p-1.5 rounded-md bg-pink-950/30 border border-pink-500/20 flex items-center gap-1.5 text-slate-200">
+                  <Mic className="w-3 h-3 text-pink-400 shrink-0" />
+                  <span>Spoken status summaries</span>
+                </div>
+
+                <div className="p-1.5 rounded-md bg-teal-950/30 border border-teal-500/20 flex items-center gap-1.5 text-slate-200">
+                  <Layers className="w-3 h-3 text-teal-400 shrink-0" />
+                  <span>Human confirmation for execution</span>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Tab 3: Payment System Outage Example Scenario */}
+            {activeTab === 'scenario' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-[11px] text-slate-300 leading-relaxed font-mono flex flex-col gap-1"
+              >
+                <div className="flex items-center gap-1.5 text-amber-300 font-bold text-[10px]">
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                  <span>EXAMPLE SEV-1: PAYMENT SYSTEM OUTAGE</span>
+                </div>
+                <p className="text-[10.5px] text-slate-300">
+                  Engineers, support teams, and leads join with incomplete or conflicting info. EchoAid X organizes evidence, tracks responsibilities, flags discrepancies, and delivers spoken status updates with human confirmation before rollbacks.
+                </p>
+              </motion.div>
+            )}
+
+          </motion.div>
+
+          {/* ─── PRIMARY & SECONDARY ACTION BUTTONS (Direct Entry) ─── */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.15 }}
+            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-2.5"
+          >
+            {/* Primary CTA: Join Live Incident Room Directly */}
             <button
-              onClick={() => setActiveModal('cosmicnexus')}
-              aria-label="About CosmicNexus"
-              className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-pink-500/10 border border-cyan-400/30 hover:border-cyan-400/60 hover:bg-cyan-500/10 backdrop-blur-xl text-cyan-300 transition-all duration-200 hover:scale-105 cursor-pointer"
+              onClick={() => handleJoinIncidentRoom()}
+              className="group relative px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:brightness-110 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer border-0 overflow-hidden"
             >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-              <span className="text-[12px] font-sans font-semibold text-white whitespace-nowrap">
-                Crafted by <span className="text-cyan-300">Kumar Aryan</span> · Founder of <span className="text-purple-300">CosmicNexus</span>
-              </span>
+              <Radio className="w-3.5 h-3.5 text-cyan-200 animate-pulse" />
+              <span>Join Incident Room</span>
+              <ArrowRight className="w-3.5 h-3.5 text-white group-hover:translate-x-1 transition-transform" />
             </button>
 
-            {/* LinkedIn icon button */}
-            <a
-              href="https://www.linkedin.com/in/aryan-aryan-1b8704351/"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Kumar Aryan on LinkedIn"
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-white/[0.06] border border-white/15 hover:bg-[#0077B5]/20 hover:border-[#0077B5]/60 text-slate-300 hover:text-[#0077B5] transition-all duration-200 hover:scale-110 cursor-pointer"
+            {/* Secondary CTA: Quick Simulate 503 Outage */}
+            <button
+              onClick={() => handleJoinIncidentRoom('The payment gateway API is throwing 503 HTTP errors and checkout failure rate surged to 42%.')}
+              className="px-4 py-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] hover:border-cyan-500/40 text-slate-200 font-semibold text-[11px] uppercase tracking-wider backdrop-blur-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
             >
-              <LinkedinIcon className="w-4 h-4" />
-            </a>
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Simulate 503 Outage</span>
+            </button>
+          </motion.div>
 
-          </div>
-        </footer>
+          {/* ─── AI INCIDENT CORE STATUS MODULE (Compact) ─── */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="p-2.5 rounded-xl bg-gradient-to-r from-white/[0.035] to-white/[0.015] border border-white/[0.08] backdrop-blur-xl shadow-xl flex items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-3">
+              {/* Audio Orb */}
+              <div className="relative flex items-center justify-center">
+                <div className={`absolute w-9 h-9 rounded-full border border-cyan-500/30 ${isVoiceActive ? 'animate-ping' : 'animate-pulse'}`} />
+                <div className="absolute w-7 h-7 rounded-full border border-indigo-500/40" />
+                
+                <button
+                  onClick={() => handleJoinIncidentRoom()}
+                  className="relative w-6.5 h-6.5 rounded-full bg-gradient-to-br from-cyan-500 to-indigo-600 p-[1px] cursor-pointer shadow-md shadow-cyan-500/30 hover:scale-105 transition-transform"
+                  aria-label="Toggle Voice Core"
+                >
+                  <div className="w-full h-full rounded-full bg-[#05070A] flex items-center justify-center">
+                    <Mic className="w-3 h-3 text-cyan-300" />
+                  </div>
+                </button>
+              </div>
 
-      </motion.div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-[8.5px] font-mono font-bold uppercase tracking-widest text-cyan-400">
+                    AI INCIDENT CORE
+                  </span>
+                  <span className={`text-[7.5px] font-mono font-semibold px-1.5 py-0.2 rounded-full border ${aiStatus.color}`}>
+                    {aiStatus.text}
+                  </span>
+                </div>
+                <span className="text-[10.5px] font-semibold text-white">
+                  Listening to multi-speaker discussions &bull; Evidence-Aware
+                </span>
+              </div>
+            </div>
+
+            {/* Connected Tool Ecosystem Tags */}
+            <div className="hidden sm:flex flex-col items-end gap-0.5">
+              <span className="text-[8.5px] font-mono text-slate-400 uppercase tracking-widest">
+                TOOL INTEGRATIONS
+              </span>
+              <div className="flex items-center gap-1 text-[9px] font-mono text-slate-300">
+                <span className="px-1.5 py-0.2 rounded bg-cyan-950/60 border border-cyan-500/30 text-cyan-300">Jira</span>
+                <span className="px-1.5 py-0.2 rounded bg-purple-950/60 border border-purple-500/30 text-purple-300">Slack</span>
+                <span className="px-1.5 py-0.2 rounded bg-emerald-950/60 border border-emerald-500/30 text-emerald-300">PagerDuty</span>
+              </div>
+            </div>
+          </motion.div>
+
+        </div>
+
+        {/* ─── RIGHT COLUMN: INTERACTIVE 3D NEURAL HEAD & LIVING BRAIN CELLS ─── */}
+        <div className="flex-1 w-full max-w-[580px] flex items-center justify-center relative">
+          <NeuralAIFigure />
+        </div>
+
+      </main>
+
+      {/* ─── BOTTOM STATUS TICKER & AUDIT INTEGRATIONS ─── */}
+      <footer className="relative z-30 w-full px-6 py-2 border-t border-white/[0.06] bg-[#020305]/90 backdrop-blur-2xl flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] font-mono text-slate-400 shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-cyan-400 font-semibold">EchoAid X Commander v2.5</span>
+          <span>&bull;</span>
+          <span className="text-slate-300">FastAPI &amp; NVIDIA NIM Active</span>
+          <span className="hidden sm:inline text-slate-600">&bull;</span>
+          <span className="hidden sm:inline text-slate-400">Evidence-First Architecture</span>
+        </div>
+
+        <div className="flex items-center gap-3 text-slate-300">
+          <span className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+            REAL-TIME VOICE
+          </span>
+          <span>&bull;</span>
+          <span className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+            HUMAN-IN-THE-LOOP
+          </span>
+          <span>&bull;</span>
+          <span className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            EVIDENCE-AWARE
+          </span>
+        </div>
+      </footer>
 
     </div>
   );

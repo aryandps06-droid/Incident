@@ -24,6 +24,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
 /* ─── GPU Hardware Accelerated Compositing Isolation ─── */
 .gpu-accelerated {
   transform: translateZ(0);

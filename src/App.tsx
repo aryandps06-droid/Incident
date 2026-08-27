@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { EmergencyProvider } from './context/EmergencyContext';
+import { IncidentProvider } from './context/IncidentContext';
+import { AuthProvider } from './context/AuthContext';
 import { UnifiedStage } from './components/screens/UnifiedStage';
 import { SplashScreen } from './components/screens/SplashScreen';
 import { MedicalIDModal } from './components/modals/MedicalIDModal';
@@ -16,15 +18,19 @@ export function App() {
         {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
       </AnimatePresence>
 
-      <EmergencyProvider>
-        <div className="min-h-screen bg-[#03050F] text-slate-100 font-sans antialiased selection:bg-brand-accent/30 selection:text-brand-accent overflow-x-hidden">
-          <UnifiedStage />
-          {/* Modals */}
-          <MedicalIDModal />
-          <ContactsModal />
-          <CPRModal />
-        </div>
-      </EmergencyProvider>
+      <AuthProvider>
+        <EmergencyProvider>
+          <IncidentProvider>
+            <div className="min-h-screen bg-[#020304] text-slate-100 font-sans antialiased selection:bg-cyan-500/20 selection:text-cyan-200 overflow-x-hidden">
+              <UnifiedStage />
+              {/* Modals */}
+              <MedicalIDModal />
+              <ContactsModal />
+              <CPRModal />
+            </div>
+          </IncidentProvider>
+        </EmergencyProvider>
+      </AuthProvider>
     </>
   );
 }

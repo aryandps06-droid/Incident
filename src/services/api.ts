@@ -1,6 +1,7 @@
 import type { TriageResponse, Incident, EmergencyContact, MedicalProfile, UserSettings, SystemHealth } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE ? `${import.meta.env.VITE_API_BASE}/api` : '/api';
+const RAW_API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || '';
+const API_BASE_URL = RAW_API_BASE ? `${RAW_API_BASE.replace(/\/+$/, '')}/api` : '/api';
 
 export interface NvidiaStatusPayload {
   configured: boolean;
@@ -334,6 +335,128 @@ export const apiService = {
       return await res.json();
     } catch {
       return settings;
+    }
+  },
+
+  /**
+   * Incident Commander API Endpoints
+   */
+  async getIncident(id: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/incidents/${id}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn("Failed fetching incident", err);
+      return null;
+    }
+  },
+
+  async startDemoIncident(): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/incidents/demo/start`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn("Failed starting backend demo", err);
+      return null;
+    }
+  },
+
+  async postTranscript(incidentId: string, speaker: string, speakerRole: string, text: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/incidents/${incidentId}/transcript`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ speaker, speakerRole, text }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn("Failed posting transcript line", err);
+      return null;
+    }
+  },
+
+  async resolveConflict(incidentId: string, conflictId: string, choice: string, confirmedValue: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/incidents/${incidentId}/conflicts/${conflictId}/resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resolutionChoice: choice, confirmedValue }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn("Failed resolving conflict", err);
+      return null;
+    }
+  },
+
+  async approveCriticalAction(incidentId: string, actionId: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/incidents/${incidentId}/critical-actions/${actionId}/approve`, {
+        method: 'POST'
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn("Failed approving critical action", err);
+      return null;
+    }
+  },
+
+  async rejectCriticalAction(incidentId: string, actionId: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/incidents/${incidentId}/critical-actions/${actionId}/reject`, {
+        method: 'POST'
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn("Failed rejecting critical action", err);
+      return null;
+    }
+  },
+
+  async updateActionItem(incidentId: string, actionId: string, updates: any): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/incidents/${incidentId}/actions/${actionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn("Failed updating action item", err);
+      return null;
+    }
+  },
+
+  async resetIncident(incidentId: string = 'INC-2048'): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/incidents/${incidentId}/reset`, {
+        method: 'POST'
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn("Failed resetting incident room", err);
+      return null;
+    }
+  },
+
+  async generateIncidentReport(incidentId: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/incidents/${incidentId}/report`, {
+        method: 'POST'
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn("Failed generating report", err);
+      return null;
     }
   }
 };

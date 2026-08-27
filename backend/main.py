@@ -1,6 +1,14 @@
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 from agora_token_builder import RtcTokenBuilder
 import time
-from fastapi import FastAPI, HTTPException
+import threading
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -12,8 +20,7 @@ import requests
 import traceback
 from datetime import datetime
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 app = FastAPI(
     title="EchoAid X Neural Engine API",
@@ -26,10 +33,25 @@ try:
 except ImportError:
     from backend.nvidia_client import nvidia_client
 
-# Enable CORS for Vite frontend
+try:
+    from incident_engine import IncidentEngine
+except ImportError:
+    from backend.incident_engine import IncidentEngine
+
+# CORS configuration supporting development & Render production origins
+frontend_origin = os.getenv("FRONTEND_ORIGIN")
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+if frontend_origin:
+    allowed_origins.append(frontend_origin.strip().rstrip('/'))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"] if os.getenv("ALLOW_ALL_CORS", "true").lower() == "true" else allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,23 +60,14 @@ app.add_middleware(
 @app.middleware("http")
 async def catch_exceptions_middleware(request: Request, call_next):
     try:
-        required_vars = [
-            "NVIDIA_API_KEY", "NVIDIA_MODEL", "NVIDIA_BASE_URL",
-            "AGORA_APP_ID", "AGORA_APP_CERTIFICATE", "AGORA_PIPELINE_ID",
-            "AGORA_CUSTOMER_ID", "AGORA_CUSTOMER_SECRET"
-        ]
-        for var in required_vars:
-            if not os.environ.get(var):
-                return JSONResponse(status_code=500, content={"success": False, "error": f"Missing {var}"})
-        
         response = await call_next(request)
         return response
     except Exception as e:
         traceback.print_exc()
         return JSONResponse(status_code=500, content={
             "success": False,
-            "error": str(e),
-            "traceback": traceback.format_exc()
+            "error": "Internal server error occurred.",
+            "detail": str(e)
         })
 
 if os.environ.get("VERCEL") == "1":
@@ -63,6 +76,7 @@ else:
     DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
     
 DB_FILE = os.path.join(DATA_DIR, "db.json")
+incident_engine = IncidentEngine(DATA_DIR)
 
 def init_db():
     if not os.path.exists(DATA_DIR):
@@ -279,10 +293,11 @@ def nvidia_chat(req: ChatRequest):
 
 
 # Endpoints
+@app.get("/health")
 @app.get("/api/health")
 def health_check():
     return {
-        "status": "healthy"
+        "status": "ok"
     }
 
 @app.post("/api/triage")
@@ -467,93 +482,265 @@ print("[AGORA INIT] PIPELINE ID =", AGORA_PIPELINE_ID)
 class AgoraJoinRequest(BaseModel):
     channel: Optional[str] = "echoaid-room"
     uid: Optional[int] = 10002
+    mode: Optional[str] = "incident"
+
+INCIDENT_COMMANDER_SYSTEM_PROMPT = """
+You are EchoAid X, a single highly capable conversational AI assistant whose primary superpower is being a real-time Incident Commander for live operational & technical war rooms.
+
+You participate in live technical, operational, and general conversations, maintaining shared situational awareness while seamlessly handling real-world inquiries.
+
+PRIMARY SPECIALIZATION — INCIDENT COMMANDER INTELLIGENCE:
+1. When the conversation is about an incident or technical outage, extract confirmed facts, hypotheses, decisions, action items, owners, unresolved questions, conflicting information, and timeline events.
+2. Never present assumptions as confirmed facts, and never invent root causes or metrics.
+3. Recognize participant roles: Incident Commander, Backend Engineer, Frontend Engineer, SRE, DevOps Engineer, Platform Engineer, Infrastructure Engineer, Security Engineer, Support Engineer, Product Manager, Engineering Manager, Business Lead, Customer Support, Observer.
+4. Distinguish facts from hypotheses (e.g., "That's currently a hypothesis; deployment causation is not yet confirmed.").
+5. Flag conflicting statements without picking sides arbitrarily.
+6. Propose mitigations (rollbacks, restarts), but NEVER pretend to execute critical actions without explicit human approval.
+
+GENERAL REAL-WORLD & CONVERSATIONAL CAPABILITY:
+1. Answer general knowledge, tech explanations, coding questions, brainstorming, and everyday questions naturally.
+2. JOKES & HUMOR: Tell diverse, funny, appropriate jokes when requested (and different jokes when asked for another one).
+3. TROUBLESHOOTING: Provide 1 clear isolation step + 1 targeted question when a problem is reported (e.g. Wi-Fi, network, system).
+4. USER-TRIGGERED MEDICAL INQUIRIES: If the user asks an educational medical/first-aid question (e.g. "What is dehydration?"), answer informatively. NEVER spontaneously start medical triage ("Is patient breathing?") unless the user explicitly reports an active medical crisis.
+5. LOCATION & WEATHER: If asked for weather or nearby places without location, politely ask for the city or neighborhood.
+6. NEVER USE BLANKET REFUSALS: Never say "I only handle incidents", "I don't have search options", or "I have no knowledge".
+
+BILINGUAL HINDI + ENGLISH & HINGLISH:
+- Match the user's language and dialect naturally (English -> English, Hindi -> natural Hindi, Hinglish -> natural Indian Hinglish).
+- Do not use rigid textbook Hindi or robotic machine translations.
+
+CRITICAL CONVERSATIONAL TIMING RULE:
+- Your initial greeting has ALREADY been spoken automatically by the voice system.
+- DO NOT repeat or re-state your greeting.
+- DO NOT speak spontaneously upon joining.
+- Wait silently for a human participant to speak or ask a question before generating any response.
+
+TONE: Calm, intelligent, concise, and natural.
+""".strip()
+
+MEDICAL_EMERGENCY_SYSTEM_PROMPT = (
+    "You are EchoAid X Incident Commander AI.\n"
+    "Participate calmly in the live incident room and respond naturally."
+)
+
+current_echoaid_agent_id: Optional[str] = None
+last_join_timestamp: float = 0.0
+last_join_mode: Optional[str] = None
+agent_join_lock = threading.Lock()
 
 @app.post("/api/agora/join")
 def join_agora(req: Optional[AgoraJoinRequest] = None):
-    try:
-        channel_name = req.channel if req and req.channel else "echoaid-room"
-        agent_uid = 10001
-        
-        if not AGORA_APP_ID or not AGORA_CUSTOMER_ID or not AGORA_CUSTOMER_SECRET or not AGORA_PIPELINE_ID:
-            raise HTTPException(
-                status_code=500,
-                detail="Agora environment variables (AGORA_APP_ID, AGORA_CUSTOMER_ID, AGORA_CUSTOMER_SECRET, AGORA_PIPELINE_ID) are missing."
-            )
-
-        expiration = 3600
-        current_timestamp = int(time.time())
-        privilege_expire = current_timestamp + expiration
-
-        agent_token = ""
-        if AGORA_APP_CERTIFICATE:
-            agent_token = RtcTokenBuilder.buildTokenWithUid(
-                AGORA_APP_ID,
-                AGORA_APP_CERTIFICATE,
-                channel_name,
-                agent_uid,
-                1,
-                privilege_expire
-            )
-
-        auth = base64.b64encode(
-            f"{AGORA_CUSTOMER_ID}:{AGORA_CUSTOMER_SECRET}".encode()
-        ).decode()
-
-        url = f"https://api.agora.io/api/conversational-ai-agent/v2/projects/{AGORA_APP_ID}/join"
-
-        payload = {
-            "name": channel_name,
-            "pipeline_id": AGORA_PIPELINE_ID,
-            "properties": {
-                "channel": channel_name,
-                "token": agent_token,
-                "agent_rtc_uid": str(agent_uid),
-                "remote_rtc_uids": ["*"]
-            }
-        }
-        headers = {
-            "Authorization": f"Basic {auth}",
-            "Content-Type": "application/json"
-        }
-
-        print("\n========== AGORA AGENT JOIN REQUEST ==========")
-        print("URL:", url)
-        print("HEADERS: Authorization: Basic [PROTECTED]")
-        print("PAYLOAD:")
-        print(json.dumps(payload, indent=4))
-        print("==============================================\n")
-
-        response = requests.post(
-            url,
-            headers=headers,
-            json=payload,
-            timeout=10
-        )
-
-        print("STATUS CODE:", response.status_code)
-        print("========== AGORA AGENT RESPONSE ==========")
+    global current_echoaid_agent_id, last_join_timestamp, last_join_mode
+    with agent_join_lock:
         try:
-            resp_data = response.json()
-            print(json.dumps(resp_data, indent=4))
-        except Exception:
-            resp_data = {"raw": response.text}
-            print(response.text)
-        print("==========================================\n")
+            channel_name = req.channel if req and req.channel else "echoaid-room"
+            agent_uid = 10001
+            user_uid = req.uid if req and req.uid else 10002
+            mode = req.mode if req and req.mode else "incident"
 
-        if response.status_code >= 400:
-            raise HTTPException(
-                status_code=response.status_code,
-                detail=resp_data
+            # Deduplication: if the exact same agent was created in the last 20 seconds, do not recreate
+            now = time.time()
+            if current_echoaid_agent_id and (now - last_join_timestamp) < 20.0 and last_join_mode == mode:
+                print(f"[AGORA AGENT] Reusing active agent session {current_echoaid_agent_id} (joined {now - last_join_timestamp:.1f}s ago)")
+                return {
+                    "status": "already_running",
+                    "agent_id": current_echoaid_agent_id,
+                    "channel": channel_name,
+                    "agent_uid": agent_uid
+                }
+
+            selected_prompt = MEDICAL_EMERGENCY_SYSTEM_PROMPT if mode == "medical" else INCIDENT_COMMANDER_SYSTEM_PROMPT
+            
+            if not AGORA_APP_ID or not AGORA_CUSTOMER_ID or not AGORA_CUSTOMER_SECRET or not AGORA_PIPELINE_ID:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Agora environment variables (AGORA_APP_ID, AGORA_CUSTOMER_ID, AGORA_CUSTOMER_SECRET, AGORA_PIPELINE_ID) are missing."
+                )
+
+            expiration = 3600
+            current_timestamp = int(time.time())
+            privilege_expire = current_timestamp + expiration
+
+            agent_token = ""
+            if AGORA_APP_CERTIFICATE:
+                agent_token = RtcTokenBuilder.buildTokenWithUid(
+                    AGORA_APP_ID,
+                    AGORA_APP_CERTIFICATE,
+                    channel_name,
+                    agent_uid,
+                    1,
+                    privilege_expire
+                )
+
+            print("[AGORA DEBUG] join requested")
+            print(f"[AGORA DEBUG] channel = {channel_name}")
+            print(f"[AGORA DEBUG] user_uid = {user_uid}")
+            print(f"[AGORA DEBUG] agent_uid = {agent_uid}")
+            print(f"[AGORA DEBUG] pipeline_id = {AGORA_PIPELINE_ID}")
+            print("[AGORA DEBUG] agent token generated = true")
+            print(f"[AGORA DEBUG] token uid = {agent_uid}")
+            print(f"[AGORA TOKEN] AGENT token UID = {agent_uid}")
+            print(f"[AGORA TOKEN] AGENT channel = {channel_name}")
+            print(f"[AGORA PAYLOAD]\nchannel={channel_name}\nagent_rtc_uid={agent_uid}\nremote_rtc_uids=*\ntoken_present=true\npipeline_id={AGORA_PIPELINE_ID}")
+
+            auth = base64.b64encode(
+                f"{AGORA_CUSTOMER_ID}:{AGORA_CUSTOMER_SECRET}".encode()
+            ).decode()
+            headers = {
+                "Authorization": f"Basic {auth}",
+                "Content-Type": "application/json"
+            }
+
+            # Terminate previous agent session ONLY if switching between modes (medical <-> incident)
+            if current_echoaid_agent_id and last_join_mode is not None and last_join_mode != mode:
+                try:
+                    leave_url = f"https://api.agora.io/api/conversational-ai-agent/v2/projects/{AGORA_APP_ID}/agents/{current_echoaid_agent_id}/leave"
+                    requests.post(leave_url, headers=headers, timeout=5)
+                    print(f"[AGORA AGENT] Mode switched from {last_join_mode} to {mode}. Terminated previous agent session: {current_echoaid_agent_id}")
+                except Exception as leave_err:
+                    print(f"[AGORA AGENT WARNING] Error leaving previous agent session: {leave_err}")
+
+            url = f"https://api.agora.io/api/conversational-ai-agent/v2/projects/{AGORA_APP_ID}/join"
+
+            greeting_text = (
+                "EchoAid emergency assistant is ready. Tell me what is happening." 
+                if mode == "medical" 
+                else "EchoAid Incident Commander is online. Tell me what is happening."
             )
 
-        return resp_data
+            payload = {
+                "name": channel_name,
+                "pipeline_id": AGORA_PIPELINE_ID,
+                "properties": {
+                    "channel": channel_name,
+                    "token": agent_token,
+                    "agent_rtc_uid": str(agent_uid),
+                    "remote_rtc_uids": ["*"],
+                    "llm": {
+                        "system_messages": [
+                            {
+                                "role": "system",
+                                "content": selected_prompt
+                            }
+                        ],
+                        "greeting_message": greeting_text
+                    }
+                }
+            }
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+            sanitized_payload = {
+                "name": channel_name,
+                "pipeline_id": AGORA_PIPELINE_ID,
+                "properties": {
+                    "channel": channel_name,
+                    "token": "[PROTECTED_AGENT_RTC_TOKEN]",
+                    "agent_rtc_uid": str(agent_uid),
+                    "remote_rtc_uids": ["*"],
+                    "llm": {
+                        "system_messages": [
+                            {
+                                "role": "system",
+                                "content": selected_prompt
+                            }
+                        ],
+                        "greeting_message": greeting_text
+                    }
+                }
+            }
+
+            print("\n========== AGORA AGENT JOIN REQUEST ==========")
+            print("URL:", url)
+            print("HEADERS: Authorization: Basic [PROTECTED]")
+            print("SANITIZED PAYLOAD (Sent to Agora API):")
+            print(json.dumps(sanitized_payload, indent=4))
+            print("==============================================\n")
+
+            print(f"[VOICE LOOP] 07 RESPONSE_SENT_TO_AGORA channel={channel_name} mode={mode} agent_uid={agent_uid}")
+            response = requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=10
+            )
+
+            # Handle 409 TaskConflict: reuse existing active agent session without creating an overlapping duplicate
+            if response.status_code == 409:
+                conflict_agent_id = None
+                try:
+                    conflict_agent_id = response.json().get("agent_id")
+                except Exception:
+                    pass
+                
+                if conflict_agent_id:
+                    print(f"[AGORA AGENT] 409 TaskConflict detected. Reusing existing active agent: {conflict_agent_id}")
+                    current_echoaid_agent_id = conflict_agent_id
+                    last_join_timestamp = time.time()
+                    last_join_mode = mode
+                    return {
+                        "status": "RUNNING",
+                        "agent_id": conflict_agent_id,
+                        "channel": channel_name,
+                        "agent_uid": agent_uid,
+                        "appId": AGORA_APP_ID
+                    }
+
+            print("STATUS CODE:", response.status_code)
+            try:
+                resp_data = response.json()
+            except Exception:
+                resp_data = {"raw": response.text}
+
+            agent_id = resp_data.get("agent_id") if isinstance(resp_data, dict) else "N/A"
+            agent_status = resp_data.get("status") if isinstance(resp_data, dict) else "UNKNOWN"
+
+            if agent_id and agent_id != "N/A":
+                current_echoaid_agent_id = agent_id
+                last_join_timestamp = time.time()
+                last_join_mode = mode
+
+            print(f"[AGORA DEBUG] Agora create response status = {response.status_code}")
+            print(f"[AGORA DEBUG] agent_id = {agent_id}")
+            print(f"[AGORA DEBUG] agent status = {agent_status}")
+            print(f"[AGORA AGENT STATE]\nagent_id={agent_id}\nstatus={agent_status}\nrtc_channel={channel_name}\nrtc_uid={agent_uid}\nmessage=ok")
+            print(f"[VOICE LOOP] 08 AGORA_AGENT_RESPONSE_RECEIVED status={response.status_code} agent_id={agent_id} agent_status={agent_status}")
+
+            if agent_id and agent_id != "N/A" and response.status_code == 200:
+                status_url = f"https://api.agora.io/api/conversational-ai-agent/v2/projects/{AGORA_APP_ID}/agents/{agent_id}"
+                for check_idx in range(1, 4):
+                    try:
+                        time.sleep(0.5)
+                        st_resp = requests.get(status_url, headers=headers, timeout=5)
+                        if st_resp.ok:
+                            st_json = st_resp.json()
+                            curr_st = st_json.get("status", "UNKNOWN")
+                            print(f"[AGENT RTC] status check #{check_idx} = {curr_st}")
+                            if curr_st == "RUNNING":
+                                resp_data["status"] = "RUNNING"
+                                break
+                            elif curr_st in ["FAILED", "STOPPED"]:
+                                print(f"[AGENT RTC ERROR] status={curr_st} reason={st_json.get('message', 'UNKNOWN')}")
+                                break
+                    except Exception as poll_err:
+                        print(f"[AGENT RTC] Poll check #{check_idx} error: {poll_err}")
+
+            if response.status_code >= 400:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=resp_data
+                )
+
+            if isinstance(resp_data, dict):
+                resp_data["agent_uid"] = agent_uid
+                resp_data["channel"] = channel_name
+                resp_data["appId"] = AGORA_APP_ID
+            return resp_data
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/agora/token")
 def generate_agora_token(channel: Optional[str] = "echoaid-room", uid: Optional[int] = 10002):
@@ -562,13 +749,6 @@ def generate_agora_token(channel: Optional[str] = "echoaid-room", uid: Optional[
     try:
         channel_name = channel or "echoaid-room"
         user_uid = uid or 10002
-
-        print("\n========== AGORA TOKEN GENERATION ==========")
-        print("APP ID:", repr(AGORA_APP_ID))
-        print("CERT:", repr(AGORA_APP_CERTIFICATE))
-        print("CHANNEL:", repr(channel_name))
-        print("USER UID:", repr(user_uid))
-        print("============================================\n")
 
         if not AGORA_APP_ID:
             raise HTTPException(status_code=500, detail="AGORA_APP_ID is missing")
@@ -588,14 +768,263 @@ def generate_agora_token(channel: Optional[str] = "echoaid-room", uid: Optional[
                 privilege_expire
             )
 
+        print(f"[AGORA TOKEN] USER token UID = {user_uid}")
+        print(f"[AGORA TOKEN] USER channel = {channel_name}")
+        print("[AGORA TOKEN] user_token_generated = true")
+
         return {
             "token": token,
             "channel": channel_name,
-            "uid": user_uid
+            "uid": user_uid,
+            "appId": AGORA_APP_ID
         }
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# ECHOAID X INCIDENT COMMANDER ENDPOINTS
+# ==========================================
+
+class CreateIncidentReq(BaseModel):
+    title: str
+    description: str
+    severity: Optional[str] = "SEV-1"
+    incidentCommander: Optional[str] = "Neha"
+
+class UpdateIncidentReq(BaseModel):
+    status: Optional[str] = None
+    severity: Optional[str] = None
+    incidentCommander: Optional[str] = None
+    impact: Optional[str] = None
+
+class TranscriptSegmentReq(BaseModel):
+    speaker: str
+    speakerRole: Optional[str] = "Backend Engineer"
+    text: str
+
+class ResolveConflictReq(BaseModel):
+    resolutionChoice: str
+    confirmedValue: str
+
+class UpdateActionItemReq(BaseModel):
+    status: Optional[str] = None
+    ownerName: Optional[str] = None
+    ownerRole: Optional[str] = None
+
+import asyncio
+from fastapi.responses import StreamingResponse
+
+subscribers: List[asyncio.Queue] = []
+
+def broadcast_update_sync(incident_data: dict):
+    """Synchronous helper to push updates to SSE subscribers."""
+    json_str = json.dumps(incident_data)
+    for q in list(subscribers):
+        try:
+            q.put_nowait(json_str)
+        except Exception:
+            if q in subscribers:
+                subscribers.remove(q)
+
+@app.get("/api/incidents/{incident_id}/stream")
+async def stream_incident_updates(incident_id: str):
+    """Real-time Server-Sent Events (SSE) stream for incident updates."""
+    queue = asyncio.Queue()
+    subscribers.append(queue)
+
+    async def event_generator():
+        try:
+            inc = incident_engine.get_incident(incident_id)
+            if inc:
+                yield f"data: {json.dumps(inc)}\n\n"
+            while True:
+                data = await queue.get()
+                yield f"data: {data}\n\n"
+        except asyncio.CancelledError:
+            if queue in subscribers:
+                subscribers.remove(queue)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@app.get("/api/incidents")
+def list_incidents():
+    return incident_engine.list_incidents()
+
+@app.post("/api/incidents")
+def create_incident(req: CreateIncidentReq):
+    return incident_engine.create_incident(
+        title=req.title,
+        description=req.description,
+        severity=req.severity or "SEV-1",
+        incident_commander=req.incidentCommander or "Neha"
+    )
+
+@app.get("/api/incidents/demo")
+@app.post("/api/incidents/demo/start")
+def start_demo_incident():
+    demo = incident_engine.start_demo_scenario()
+    broadcast_update_sync(demo)
+    return demo
+
+@app.get("/api/incidents/{incident_id}")
+def get_incident(incident_id: str):
+    inc = incident_engine.get_incident(incident_id)
+    if not inc:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    return inc
+
+@app.post("/api/incidents/{incident_id}/reset")
+def reset_incident(incident_id: str):
+    fresh = incident_engine.reset_incident(incident_id)
+    broadcast_update_sync(fresh)
+    return fresh
+
+@app.patch("/api/incidents/{incident_id}")
+def update_incident(incident_id: str, req: UpdateIncidentReq):
+    updates = {k: v for k, v in req.dict().items() if v is not None}
+    updated = incident_engine.update_incident(incident_id, updates)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    broadcast_update_sync(updated)
+    return updated
+
+@app.post("/api/incidents/{incident_id}/transcript")
+def process_transcript(incident_id: str, req: TranscriptSegmentReq):
+    print(f"[VOICE LOOP] 05 AI_PROCESSING_STARTED incident={incident_id} text='{req.text}'")
+    inc_context = incident_engine.get_incident(incident_id) or {}
+    
+    ai_extracted = nvidia_client.analyze_incident_statement(
+        text=req.text,
+        speaker=req.speaker,
+        speaker_role=req.speakerRole or "Observer",
+        incident_context=inc_context
+    )
+    print(f"[VOICE LOOP] 06 AI_RESPONSE_CREATED summary='{ai_extracted.get('aiSummarySpoken', '')}'")
+    
+    updated_inc = incident_engine.add_transcript_segment(
+        incident_id=incident_id,
+        speaker=req.speaker,
+        speaker_role=req.speakerRole or "Observer",
+        text=req.text,
+        ai_analysis=ai_extracted
+    )
+    print(f"[TRANSCRIPT] received for incident {incident_id}")
+    print(f"[TRANSCRIPT] speaker: {req.speaker} ({req.speakerRole})")
+    print(f"[TRANSCRIPT] text: '{req.text}'")
+    print("[INCIDENT] Transcript stored")
+    broadcast_update_sync(updated_inc)
+    print("[INCIDENT STREAM] Transcript published")
+    return {
+        "incident": updated_inc,
+        "aiExtracted": ai_extracted
+    }
+
+class AgoraTranscriptWebhookReq(BaseModel):
+    incidentId: Optional[str] = "INC-2048"
+    speaker: Optional[str] = "Participant"
+    speakerRole: Optional[str] = "Observer"
+    text: str
+    confidence: Optional[float] = 0.95
+    timestamp: Optional[str] = None
+    source: Optional[str] = "agora"
+
+@app.post("/api/agora/webhook")
+@app.post("/api/agora/transcript")
+def agora_transcript_webhook(req: AgoraTranscriptWebhookReq):
+    print("[AGORA WEBHOOK] Received")
+    print(f"[AGORA TRANSCRIPT] text received: '{req.text}'")
+    print(f"[AGORA TRANSCRIPT] speaker/uid: {req.speaker} ({req.speakerRole})")
+
+    incident_id = req.incidentId or "INC-2048"
+    inc_context = incident_engine.get_incident(incident_id) or {}
+
+    ai_extracted = nvidia_client.analyze_incident_statement(
+        text=req.text,
+        speaker=req.speaker or "Participant",
+        speaker_role=req.speakerRole or "Observer",
+        incident_context=inc_context
+    )
+
+    updated_inc = incident_engine.add_transcript_segment(
+        incident_id=incident_id,
+        speaker=req.speaker or "Participant",
+        speaker_role=req.speakerRole or "Observer",
+        text=req.text,
+        ai_analysis=ai_extracted
+    )
+
+    print("[INCIDENT] Transcript stored")
+    broadcast_update_sync(updated_inc)
+    print("[INCIDENT STREAM] Transcript published")
+
+    return {
+        "status": "success",
+        "incident": updated_inc,
+        "aiExtracted": ai_extracted
+    }
+
+@app.get("/api/incidents/{incident_id}/facts")
+def get_facts(incident_id: str):
+    inc = incident_engine.get_incident(incident_id)
+    return inc.get("facts", []) if inc else []
+
+@app.get("/api/incidents/{incident_id}/hypotheses")
+def get_hypotheses(incident_id: str):
+    inc = incident_engine.get_incident(incident_id)
+    return inc.get("hypotheses", []) if inc else []
+
+@app.get("/api/incidents/{incident_id}/decisions")
+def get_decisions(incident_id: str):
+    inc = incident_engine.get_incident(incident_id)
+    return inc.get("decisions", []) if inc else []
+
+@app.get("/api/incidents/{incident_id}/actions")
+def get_actions(incident_id: str):
+    inc = incident_engine.get_incident(incident_id)
+    return inc.get("actions", []) if inc else []
+
+@app.get("/api/incidents/{incident_id}/timeline")
+def get_timeline(incident_id: str):
+    inc = incident_engine.get_incident(incident_id)
+    return inc.get("timeline", []) if inc else []
+
+@app.post("/api/incidents/{incident_id}/conflicts/{conflict_id}/resolve")
+def resolve_conflict(incident_id: str, conflict_id: str, req: ResolveConflictReq):
+    updated = incident_engine.resolve_conflict(incident_id, conflict_id, req.resolutionChoice, req.confirmedValue)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Conflict or Incident not found")
+    broadcast_update_sync(updated)
+    return updated
+
+@app.post("/api/incidents/{incident_id}/critical-actions/{action_id}/approve")
+def approve_critical_action(incident_id: str, action_id: str):
+    updated = incident_engine.approve_critical_action(incident_id, action_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Critical action not found")
+    broadcast_update_sync(updated)
+    return updated
+
+@app.post("/api/incidents/{incident_id}/critical-actions/{action_id}/reject")
+def reject_critical_action(incident_id: str, action_id: str):
+    updated = incident_engine.reject_critical_action(incident_id, action_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Critical action not found")
+    broadcast_update_sync(updated)
+    return updated
+
+@app.patch("/api/incidents/{incident_id}/actions/{action_id}")
+def update_action_item(incident_id: str, action_id: str, req: UpdateActionItemReq):
+    updates = {k: v for k, v in req.dict().items() if v is not None}
+    updated = incident_engine.update_action_item(incident_id, action_id, updates)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Action item not found")
+    broadcast_update_sync(updated)
+    return updated
+
+@app.post("/api/incidents/{incident_id}/report")
+def generate_report(incident_id: str):
+    return incident_engine.generate_incident_report(incident_id)
 
 if __name__ == "__main__":
     import uvicorn

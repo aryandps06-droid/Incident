@@ -1,0 +1,197 @@
+{
+  "incidents": {
+    "INC-2048": {
+      "id": "INC-2048",
+      "title": "PAYMENT API OUTAGE & 503 ERROR SPIKE",
+      "description": "Payment gateway processing failures impacting customer checkout across web and mobile platforms.",
+      "severity": "SEV-1",
+      "status": "INVESTIGATING",
+      "createdAt": "2026-08-27T21:39:45.383769Z",
+      "startedAt": "10:37:00",
+      "resolvedAt": null,
+      "incidentCommander": "Neha",
+      "affectedServices": [
+        "Payment API v2",
+        "Checkout Microservice",
+        "Stripe Bridge"
+      ],
+      "impact": "14.2% payment failure rate, ~450 failed checkout attempts",
+      "participants": [
+        {
+          "id": "p-neha",
+          "name": "Neha",
+          "role": "Incident Commander",
+          "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+          "status": "active",
+          "joinedAt": "10:44:00",
+          "speaking": false,
+          "confidence": 1.0
+        },
+        {
+          "id": "p-arjun",
+          "name": "Arjun",
+          "role": "Backend Engineer",
+          "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+          "status": "active",
+          "joinedAt": "10:42:00",
+          "speaking": false,
+          "confidence": 0.98
+        },
+        {
+          "id": "p-ananya",
+          "name": "Ananya",
+          "role": "Frontend Engineer",
+          "avatar": "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150",
+          "status": "active",
+          "joinedAt": "10:43:00",
+          "speaking": false,
+          "confidence": 0.97
+        },
+        {
+          "id": "p-priya",
+          "name": "Priya",
+          "role": "SRE / DevOps",
+          "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+          "status": "active",
+          "joinedAt": "10:48:00",
+          "speaking": false,
+          "confidence": 0.96
+        },
+        {
+          "id": "p-rahul",
+          "name": "Rahul",
+          "role": "Support",
+          "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+          "status": "active",
+          "joinedAt": "10:37:00",
+          "speaking": false,
+          "confidence": 0.95
+        },
+        {
+          "id": "p-kavita",
+          "name": "Kavita",
+          "role": "Product Manager",
+          "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150",
+          "status": "active",
+          "joinedAt": "10:40:00",
+          "speaking": false,
+          "confidence": 0.94
+        },
+        {
+          "id": "p-rohan",
+          "name": "Rohan",
+          "role": "Business Lead",
+          "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+          "status": "active",
+          "joinedAt": "10:41:00",
+          "speaking": false,
+          "confidence": 0.93
+        },
+        {
+          "id": "p-marcus",
+          "name": "Marcus",
+          "role": "Observer",
+          "avatar": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150",
+          "status": "active",
+          "joinedAt": "10:45:00",
+          "speaking": false,
+          "confidence": 0.9
+        },
+        {
+          "id": "p-ai",
+          "name": "EchoAid X",
+          "role": "AI Incident Commander",
+          "avatar": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150",
+          "status": "active",
+          "joinedAt": "10:44:00",
+          "speaking": false,
+          "confidence": 1.0
+        }
+      ],
+      "facts": [],
+      "hypotheses": [],
+      "decisions": [],
+      "actions": [],
+      "conflicts": [],
+      "missingInformation": [
+        {
+          "id": "mi-1",
+          "topic": "Root Cause Confirmation",
+          "description": "Root cause remains unconfirmed. Awaiting live diagnostic evidence from the incident room.",
+          "severity": "HIGH",
+          "status": "IDENTIFIED"
+        }
+      ],
+      "risks": [
+        "Payment failures ongoing during investigation",
+        "Customer checkout impact active"
+      ],
+      "timeline": [
+        {
+          "id": "evt-init",
+          "timestamp": "10:37:00",
+          "eventType": "INCIDENT_CREATED",
+          "title": "Incident Room INC-2048 Initialized",
+          "description": "EchoAid X Evidence-First AI Incident Commander online. Listening to live war room audio.",
+          "source": "EchoAid X",
+          "confidenceOrStatus": "Online"
+        }
+      ],
+      "transcript": [],
+      "systemSignals": [
+        {
+          "id": "sig-1",
+          "serviceName": "Payment API",
+          "metricName": "HTTP 503 Rate",
+          "value": "14.2%",
+          "unit": "error_rate",
+          "status": "CRITICAL",
+          "timestamp": "10:37:00",
+          "isDemo": false
+        },
+        {
+          "id": "sig-2",
+          "serviceName": "Database Cluster",
+          "metricName": "CPU Utilization",
+          "value": "42%",
+          "unit": "percent",
+          "status": "NORMAL",
+          "timestamp": "10:37:00",
+          "isDemo": false
+        }
+      ],
+      "aiUpdates": [
+        "EchoAid X connected to room INC-2048 as Evidence-First AI Incident Commander."
+      ],
+      "integrations": [
+        {
+          "service": "Slack",
+          "status": "CONNECTED",
+          "lastSync": "10:37:00",
+          "details": "#incident-pay-503 (Live)"
+        },
+        {
+          "service": "Jira",
+          "status": "CONNECTED",
+          "lastSync": "10:37:00",
+          "details": "Ticket INC-2048 linked"
+        },
+        {
+          "service": "PagerDuty",
+          "status": "CONNECTED",
+          "lastSync": "10:37:00",
+          "details": "On-call SRE & Commander acknowledged"
+        },
+        {
+          "service": "Datadog / Monitoring",
+          "status": "CONNECTED",
+          "lastSync": "10:37:00",
+          "details": "Live telemetry active"
+        }
+      ],
+      "criticalActions": [],
+      "isDemoMode": false,
+      "demoStep": 0
+    }
+  }
+}

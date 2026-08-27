@@ -376,6 +376,11 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const speakInstruction = (text: string) => {
+    // Pure Single Voice: Agora Conversational AI Agent handles all audio
+    if (activeView === 'command' || activeView === 'incidents' || agoraStatus !== 'DISCONNECTED') {
+      console.log('[VOICE DEBUG] Incident Mode / Agora RTC active — skipping SpeechSynthesis.');
+      return;
+    }
     if (!isVoiceActive || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
       window.speechSynthesis.cancel();
@@ -439,31 +444,78 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const stopVoice = () => {
     setConversationState('IDLE');
+    setIsListening(false);
+    setIsAgoraMuted(true);
     setInterimTranscript('');
     agoraVoiceService.setAISpeaking(false);
     if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
+      try { 
+        recognitionRef.current.abort(); 
+        recognitionRef.current.stop(); 
+      } catch {}
     }
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
+    // Keep AI speech synthesis playing so user muting mic never cuts off AI voice responses
     if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
     if (autoResumeTimeoutRef.current) clearTimeout(autoResumeTimeoutRef.current);
   };
 
   const stopVoiceSession = stopVoice;
 
-  const toggleAgoraMute = () => {
-    agoraVoiceService.toggleMute();
+  const toggleAgoraMute = async () => {
+    const targetMode = (activeView === 'command' || activeView === 'incidents') ? 'incident' : 'medical';
+    if (agoraVoiceService.currentStatus === 'DISCONNECTED') {
+      console.log(`[VOICE STATE] toggleAgoraMute initiating joinSession (${targetMode})`);
+      await agoraVoiceService.joinSession(targetMode);
+    }
+    const isMuted = await agoraVoiceService.toggleMute();
+    if (!isMuted) {
+      console.log('[VOICE LOOP] 01 MIC_ON');
+      console.log('[VOICE] Microphone ON — listening for speech...');
+      setConversationState('LISTENING');
+      try {
+        if (recognitionRef.current) {
+          recognitionRef.current.start();
+        }
+      } catch (e) { /* already listening */ }
+    } else {
+      console.log('[VOICE] Microphone OFF — muted microphone track');
+      setConversationState('IDLE');
+      setInterimTranscript('');
+      try {
+        if (recognitionRef.current) {
+          recognitionRef.current.stop();
+        }
+      } catch (e) { /* already stopped */ }
+    }
   };
 
   // Full Pipeline: User Speech -> Automatic Fact Extraction -> Known Facts Summary -> NVIDIA NIM -> Voice Output
 
 
+  const lastProcessedTranscriptRef = useRef<{ text: string; time: number }>({ text: '', time: 0 });
+
   const handleSpokenInput = async (spokenText: string) => {
     if (!spokenText.trim()) return;
 
+    const trimmed = spokenText.trim();
+    const now = Date.now();
+    if (lastProcessedTranscriptRef.current.text === trimmed && (now - lastProcessedTranscriptRef.current.time) < 1500) {
+      console.log('[TRANSCRIPT DEDUPLICATION] Duplicate recognition event suppressed within 1500ms:', trimmed);
+      return;
+    }
+    lastProcessedTranscriptRef.current = { text: trimmed, time: now };
+
     setInterimTranscript('');
+
+    console.log('[VOICE LOOP] 02 SPEECH_DETECTED:', spokenText);
+    console.log('[VOICE LOOP] 03 TRANSCRIPT_CREATED:', spokenText);
+    console.log('[VOICE] microphone audio detected:', spokenText);
+    if (typeof window !== 'undefined' && spokenText && spokenText.trim()) {
+      console.log('[TRANSCRIPT] dispatching spoken transcript to Incident Room pipeline:', spokenText);
+      window.dispatchEvent(new CustomEvent('echoaid_spoken_transcript', {
+        detail: { text: spokenText.trim(), timestamp: new Date().toISOString() }
+      }));
+    }
 
     const userMsg: DialogueMessage = {
       id: `msg-${Date.now()}`,
@@ -474,6 +526,13 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     setIsListening(false);
+
+    if (activeView === 'command' || activeView === 'incidents') {
+      console.log('[VOICE DEBUG] Incident Commander Mode active — skipping medical triage analysis & voice prompts');
+      setIsAnalyzing(false);
+      return;
+    }
+
     setIsAnalyzing(true);
 
     const lower = spokenText.toLowerCase();
@@ -829,7 +888,8 @@ ${emergencySession.ambulance_called || updatedFacts.ambulance_called ? 'Called' 
     }
 
     setScreenState('conversation');
-    agoraVoiceService.joinSession().catch((err) => {
+    const targetMode = (activeView === 'command' || activeView === 'incidents') ? 'incident' : 'medical';
+    agoraVoiceService.joinSession(targetMode).catch((err) => {
       console.warn('Agora Web Voice Session Notice:', err?.message || err);
     });
     
@@ -845,16 +905,16 @@ ${emergencySession.ambulance_called || updatedFacts.ambulance_called ? 'Called' 
         // Do not recreate duplicate instances if possible
         if (!recognitionRef.current) {
           recognitionRef.current = new SpeechRecognition();
-          recognitionRef.current.continuous = false;
+          recognitionRef.current.continuous = true;
           recognitionRef.current.interimResults = true;
-          recognitionRef.current.lang = 'en-US';
+          recognitionRef.current.lang = navigator.language || 'en-US';
         }
         
         const recognition = recognitionRef.current;
 
         recognition.onstart = () => {
           setConversationState('LISTENING');
-          setInterimTranscript('');
+          setIsListening(true);
         };
 
         recognition.onresult = (event: any) => {
@@ -862,44 +922,42 @@ ${emergencySession.ambulance_called || updatedFacts.ambulance_called ? 'Called' 
           
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              currentInterim += transcript;
-            } else {
-              currentInterim += transcript;
-            }
+            currentInterim += transcript;
           }
           
           setInterimTranscript(currentInterim);
 
-          // VAD/Silence Detection: wait 800ms after user pauses to process
+          // VAD/Silence Detection: wait 600ms after user pauses to process complete sentence
           if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
           
-          if (currentInterim.trim().length > 0) {
-             silenceTimeoutRef.current = setTimeout(() => {
-                setConversationState('PROCESSING');
-                try { recognition.stop(); } catch {}
-                handleSpokenInput(currentInterim);
-              }, 400); // Fast 400ms VAD timeout for snappier conversation
+          if (currentInterim.trim().length >= 2) {
+            silenceTimeoutRef.current = setTimeout(() => {
+              const fullSpeech = currentInterim.trim();
+              setInterimTranscript('');
+              if (fullSpeech) {
+                handleSpokenInput(fullSpeech);
+              }
+            }, 600); // 600ms natural breathing cadence
           }
         };
 
         recognition.onerror = (event: any) => {
-          console.warn('Speech recognition error:', event.error);
-          setInterimTranscript('');
-          if (event.error !== 'aborted') {
-            setConversationState('WAITING_FOR_USER');
-            // Mock fallback for hackathon if no mic attached
-            if (event.error === 'not-allowed' || event.error === 'no-speech') {
-               // Ignore gracefully
-            } else {
-               handleSpokenInput('My father suddenly collapsed and is not responding.');
-            }
+          if (event.error === 'no-speech' || event.error === 'aborted') {
+            // Normal browser speech pause/silence — handle quietly without stopping listener
+            return;
           }
+          console.warn('Speech recognition notice:', event.error);
         };
 
         recognition.onend = () => {
-          if (conversationState === 'LISTENING') {
-             setConversationState('IDLE');
+          // Keep continuous recognition running while microphone is unmuted
+          if (!isAgoraMuted && recognitionRef.current) {
+            try { 
+              recognition.start(); 
+            } catch (e) { /* already active */ }
+          } else {
+            setConversationState('IDLE');
+            setIsListening(false);
           }
         };
 
@@ -922,14 +980,16 @@ ${emergencySession.ambulance_called || updatedFacts.ambulance_called ? 'Called' 
   };
 
   const startConversation = async (userSpeech?: string) => {
+    setScreenState('conversation');
+    const targetMode = (activeView === 'command' || activeView === 'incidents') ? 'incident' : 'medical';
+    agoraVoiceService.joinSession(targetMode).catch((err) => {
+      console.warn('Agora Web Voice Session Notice:', err?.message || err);
+    });
     if (userSpeech) {
-      setScreenState('conversation');
-      agoraVoiceService.joinSession().catch((err) => {
-        console.warn('Agora Web Voice Session Notice:', err?.message || err);
-      });
       handleSpokenInput(userSpeech);
     } else {
-      startVoiceSession();
+      setIsAgoraMuted(true);
+      agoraVoiceService.setMuted(true);
     }
   };
 

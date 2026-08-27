@@ -54,7 +54,7 @@ export const ConversationPanel: React.FC = () => {
           <Sparkles className="w-4 h-4 text-brand-accent" />
           <span className="text-xs font-mono font-bold text-slate-300">LIVE CONVERSATION TRANSCRIPT</span>
         </div>
-        <span className="text-[11px] font-mono text-slate-400">OPENAI AI ENGINE ENCRYPTED</span>
+        <span className="text-[11px] font-mono text-slate-400">NVIDIA NIM ENGINE ENCRYPTED</span>
       </div>
 
       {/* Messages Scroll Area */}
