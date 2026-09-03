@@ -294,12 +294,34 @@ def nvidia_chat(req: ChatRequest):
 
 
 
-# Endpoints
+# Root & Health Check Endpoints
+@app.get("/")
+@app.get("/api")
+def root_welcome():
+    return {
+        "status": "ok",
+        "service": "EchoAid X — Evidence-First AI Incident Commander API",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health",
+        "endpoints": {
+            "health": "/health",
+            "nvidia_status": "/api/nvidia/status",
+            "agora_token": "/api/agora/token",
+            "agora_join": "/api/agora/join",
+            "incidents_stream": "/api/incidents/{incident_id}/stream",
+            "incidents_reset": "/api/incidents/{incident_id}/reset",
+            "incidents_report": "/api/incidents/{incident_id}/report"
+        }
+    }
+
 @app.get("/health")
 @app.get("/api/health")
 def health_check():
     return {
-        "status": "ok"
+        "status": "ok",
+        "service": "EchoAid X Incident API",
+        "timestamp": datetime.utcnow().isoformat() + "Z"
     }
 
 @app.post("/api/triage")
