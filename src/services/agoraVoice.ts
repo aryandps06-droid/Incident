@@ -305,7 +305,7 @@ class AgoraVoiceService {
         const rawApiBase = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'https://incident-ih39.onrender.com';
         const apiBase = rawApiBase.replace(/\/+$/, '').replace(/\/api$/, '');
         const channelName = import.meta.env.VITE_AGORA_CHANNEL || 'echoaid-room';
-        const defaultAppId = import.meta.env.VITE_AGORA_APP_ID || '';
+        const defaultAppId = import.meta.env.VITE_AGORA_APP_ID || 'd25185935efb4c55b6e4c0569a602e72';
 
         // STEP 1 — Request Microphone Track FIRST (Local WebRTC DSP)
         if (!this.localAudioTrack) {
@@ -343,12 +343,32 @@ class AgoraVoiceService {
 
           console.log('[AGENT TOKEN DEBUG] channel=' + channel);
           console.log('[AGENT TOKEN DEBUG] user_uid=' + uid);
-          console.log('[AGENT TOKEN DEBUG] token_present=true');
+          console.log('[AGENT TOKEN DEBUG] token_present=' + (!!token));
           console.log('[AGENT TOKEN DEBUG] token_generation=SUCCESS');
 
-          console.log('[VOICE STATE] rtcClient.join started');
-          this.localUid = await this.rtcClient.join(appId, channel, token, uid);
-          console.log('[VOICE STATE] rtcClient.join succeeded');
+          const targetAppId = appId || defaultAppId;
+          const targetUid = Number(uid || 10002);
+          const targetToken = token || null;
+          let joinedUid: UID | null = null;
+
+          try {
+            console.log('[VOICE STATE] rtcClient.join started with token for App ID:', targetAppId);
+            joinedUid = await this.rtcClient.join(targetAppId, channel, targetToken, targetUid);
+            console.log('[VOICE STATE] rtcClient.join succeeded with token');
+          } catch (joinErr: any) {
+            const errMsg = String(joinErr?.message || joinErr || '');
+            console.warn('[VOICE STATE] rtcClient.join with token failed:', errMsg);
+            if (errMsg.includes('CAN_NOT_GET_GATEWAY_SERVER') || errMsg.includes('INVALID_TOKEN') || errMsg.includes('TOKEN_EXPIRED')) {
+              try {
+                console.log('[VOICE STATE] Retrying rtcClient.join without token...');
+                joinedUid = await this.rtcClient.join(targetAppId, channel, null, targetUid);
+                console.log('[VOICE STATE] rtcClient.join succeeded without token');
+              } catch (fallbackErr: any) {
+                console.error('[VOICE STATE] Fallback rtcClient.join without token failed:', fallbackErr);
+              }
+            }
+          }
+          this.localUid = joinedUid || targetUid;
 
           this.state.status = 'CONNECTED';
           this.state.channelName = channel;
