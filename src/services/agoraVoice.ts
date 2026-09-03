@@ -349,26 +349,10 @@ class AgoraVoiceService {
           const targetAppId = appId || defaultAppId;
           const targetUid = Number(uid || 10002);
           const targetToken = token || null;
-          let joinedUid: UID | null = null;
 
-          try {
-            console.log('[VOICE STATE] rtcClient.join started with token for App ID:', targetAppId);
-            joinedUid = await this.rtcClient.join(targetAppId, channel, targetToken, targetUid);
-            console.log('[VOICE STATE] rtcClient.join succeeded with token');
-          } catch (joinErr: any) {
-            const errMsg = String(joinErr?.message || joinErr || '');
-            console.warn('[VOICE STATE] rtcClient.join with token failed:', errMsg);
-            if (errMsg.includes('CAN_NOT_GET_GATEWAY_SERVER') || errMsg.includes('INVALID_TOKEN') || errMsg.includes('TOKEN_EXPIRED')) {
-              try {
-                console.log('[VOICE STATE] Retrying rtcClient.join without token...');
-                joinedUid = await this.rtcClient.join(targetAppId, channel, null, targetUid);
-                console.log('[VOICE STATE] rtcClient.join succeeded without token');
-              } catch (fallbackErr: any) {
-                console.error('[VOICE STATE] Fallback rtcClient.join without token failed:', fallbackErr);
-              }
-            }
-          }
-          this.localUid = joinedUid || targetUid;
+          console.log('[VOICE STATE] Executing rtcClient.join with App ID:', targetAppId, 'Channel:', channel, 'UID:', targetUid);
+          this.localUid = await this.rtcClient.join(targetAppId, channel, targetToken, targetUid);
+          console.log('[VOICE STATE] rtcClient.join succeeded with UID:', this.localUid);
 
           this.state.status = 'CONNECTED';
           this.state.channelName = channel;
