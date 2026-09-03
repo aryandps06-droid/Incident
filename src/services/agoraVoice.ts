@@ -302,7 +302,8 @@ class AgoraVoiceService {
         this.state.status = 'CONNECTING';
         this.notify();
 
-        const apiBase = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'https://incident-ih39.onrender.com').replace(/\/+$/, '');
+        const rawApiBase = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'https://incident-ih39.onrender.com';
+        const apiBase = rawApiBase.replace(/\/+$/, '').replace(/\/api$/, '');
         const channelName = import.meta.env.VITE_AGORA_CHANNEL || 'echoaid-room';
         const defaultAppId = import.meta.env.VITE_AGORA_APP_ID || '';
 

@@ -1,7 +1,8 @@
 import type { TriageResponse, Incident, EmergencyContact, MedicalProfile, UserSettings, SystemHealth } from '../types';
 
 const RAW_API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'https://incident-ih39.onrender.com';
-const API_BASE_URL = RAW_API_BASE ? `${RAW_API_BASE.replace(/\/+$/, '')}/api` : 'https://incident-ih39.onrender.com/api';
+const CLEAN_BASE = RAW_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '');
+const API_BASE_URL = `${CLEAN_BASE}/api`;
 
 export interface NvidiaStatusPayload {
   configured: boolean;
@@ -48,12 +49,16 @@ export interface NvidiaChatResponse {
 
 export const apiService = {
   /**
-   * GET /api/health — Real Backend Telemetry & Health Check
+   * GET /health or /api/health — Real Backend Telemetry & Health Check
    */
   async getHealth(): Promise<SystemHealth> {
     try {
-      const res = await fetch(`${API_BASE_URL}/health`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`Backend HTTP ${res.status}`);
+      const res = await fetch(`${CLEAN_BASE}/health`, { cache: 'no-store' });
+      if (!res.ok) {
+        const fallbackRes = await fetch(`${API_BASE_URL}/health`, { cache: 'no-store' });
+        if (!fallbackRes.ok) throw new Error(`Backend HTTP ${fallbackRes.status}`);
+        return await fallbackRes.json();
+      }
       return await res.json();
     } catch (err: any) {
       return {

@@ -821,8 +821,9 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     });
 
-    const apiBase = import.meta.env.VITE_API_BASE ? `${import.meta.env.VITE_API_BASE}/api` : '/api';
-    const streamUrl = `${apiBase}/incidents/INC-2048/stream`;
+    const rawApiBase = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'https://incident-ih39.onrender.com';
+    const cleanApiBase = rawApiBase.replace(/\/+$/, '').replace(/\/api$/, '');
+    const streamUrl = `${cleanApiBase}/api/incidents/INC-2048/stream`;
     
     let eventSource: EventSource | null = null;
     try {
