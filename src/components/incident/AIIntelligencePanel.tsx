@@ -11,10 +11,11 @@ import {
   Zap,
   Eye,
   Check,
-  UserCheck
+  UserCheck,
+  AlertCircle
 } from 'lucide-react';
 
-type IntelTab = 'facts' | 'hypotheses' | 'decisions' | 'actions' | 'conflicts' | 'missing' | 'signals' | 'integrations';
+type IntelTab = 'facts' | 'hypotheses' | 'decisions' | 'actions' | 'conflicts' | 'missing' | 'impact' | 'signals' | 'integrations';
 
 export const AIIntelligencePanel: React.FC = () => {
   const { 
@@ -130,6 +131,18 @@ export const AIIntelligencePanel: React.FC = () => {
           <span className="px-1.5 py-0.2 rounded-full bg-yellow-950/80 text-[10px] text-yellow-300 font-mono">
             {currentIncident.missingInformation.length}
           </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('impact')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
+            activeTab === 'impact'
+              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm shadow-rose-950'
+              : 'bg-white/[0.02] text-slate-400 hover:text-slate-200 border border-transparent hover:border-white/[0.06]'
+          }`}
+        >
+          <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+          <span>IMPACT</span>
         </button>
 
         <button
@@ -393,7 +406,69 @@ export const AIIntelligencePanel: React.FC = () => {
           )
         )}
 
-        {/* 7. SYSTEM SIGNALS TAB */}
+        {/* 7. IMPACT MODEL TAB */}
+        {activeTab === 'impact' && (
+          <div className="flex flex-col gap-3 text-xs">
+            {/* Technical Impact */}
+            <div className="p-3 rounded-xl bg-slate-900/80 border border-cyan-500/30 flex flex-col gap-1.5">
+              <span className="font-bold text-cyan-400 font-mono text-[11px] uppercase tracking-wider">
+                Technical Impact
+              </span>
+              <ul className="list-disc list-inside text-slate-300 space-y-1">
+                {(currentIncident.impactModel?.technical || [
+                  'HTTP 503 errors on payment gateway API',
+                  'Checkout endpoint affected',
+                  'Core application still available',
+                  'Database, CPU, and memory healthy'
+                ]).map((item, idx) => (
+                  <li key={idx}>{item}</li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Customer Impact */}
+            <div className="p-3 rounded-xl bg-slate-900/80 border border-amber-500/30 flex flex-col gap-1.5">
+              <span className="font-bold text-amber-400 font-mono text-[11px] uppercase tracking-wider">
+                Customer Impact
+              </span>
+              <ul className="list-disc list-inside text-slate-300 space-y-1">
+                {(currentIncident.impactModel?.customer || [
+                  'Failed payment transactions',
+                  'Failed checkout attempts',
+                  'Customers can browse but cannot complete some purchases',
+                  'Support reports increasing'
+                ]).map((item, idx) => (
+                  <li key={idx}>{item}</li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Business Impact */}
+            <div className="p-3 rounded-xl bg-slate-900/80 border border-rose-500/30 flex flex-col gap-2">
+              <span className="font-bold text-rose-400 font-mono text-[11px] uppercase tracking-wider">
+                Business Impact
+              </span>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="p-2 rounded bg-slate-950/60 border border-slate-800">
+                  <span className="text-slate-400 block font-mono text-[10px]">Conversion Affected</span>
+                  <span className="text-rose-300 font-bold font-mono">YES</span>
+                </div>
+                <div className="p-2 rounded bg-slate-950/60 border border-slate-800">
+                  <span className="text-slate-400 block font-mono text-[10px]">Customer Trust Risk</span>
+                  <span className="text-rose-300 font-bold font-mono">HIGH</span>
+                </div>
+              </div>
+              <div className="p-2 rounded bg-slate-950/60 border border-slate-800">
+                <span className="text-slate-400 block font-mono text-[10px]">Revenue Impact Status</span>
+                <span className="text-amber-300 font-medium italic font-mono">
+                  {currentIncident.impactModel?.business.revenueImpact || "Revenue impact not yet quantified"}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 8. SYSTEM SIGNALS TAB */}
         {activeTab === 'signals' && (
           <div className="flex flex-col gap-3">
             <div className="text-[10px] font-mono text-cyan-400 bg-cyan-950/40 p-2 rounded border border-cyan-800/50 flex items-center justify-between">

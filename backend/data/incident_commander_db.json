@@ -6,7 +6,7 @@
       "description": "Payment gateway processing failures impacting customer checkout across web and mobile platforms.",
       "severity": "SEV-1",
       "status": "INVESTIGATING",
-      "createdAt": "2026-08-27T21:39:45.383769Z",
+      "createdAt": "2026-09-03T08:30:07.431405Z",
       "startedAt": "10:37:00",
       "resolvedAt": null,
       "incidentCommander": "Neha",
@@ -16,6 +16,26 @@
         "Stripe Bridge"
       ],
       "impact": "14.2% payment failure rate, ~450 failed checkout attempts",
+      "impactModel": {
+        "technical": [
+          "HTTP 503 errors on payment gateway API",
+          "Checkout endpoint affected",
+          "Core application still available",
+          "Database, CPU, and memory healthy"
+        ],
+        "customer": [
+          "Failed payment transactions",
+          "Failed checkout attempts",
+          "Customers can browse but cannot complete some purchases",
+          "Support reports increasing"
+        ],
+        "business": {
+          "conversionAffected": true,
+          "revenueImpact": "Revenue impact not yet quantified",
+          "customerTrustRisk": "HIGH",
+          "businessSeverity": "SEV-1"
+        }
+      },
       "participants": [
         {
           "id": "p-neha",

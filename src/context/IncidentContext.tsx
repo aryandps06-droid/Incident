@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { 
   IncidentCommanderState, 
   Participant, 
@@ -24,6 +24,26 @@ const DEFAULT_INCIDENT: IncidentCommanderState = {
   incidentCommander: 'Neha',
   affectedServices: ['Payment API v2', 'Checkout Microservice', 'Stripe Bridge'],
   impact: '14.2% payment failure rate, ~450 failed checkout attempts',
+  impactModel: {
+    technical: [
+      'HTTP 503 errors on payment gateway API',
+      'Checkout endpoint affected',
+      'Core application still available',
+      'Database, CPU, and memory healthy'
+    ],
+    customer: [
+      'Failed payment transactions',
+      'Failed checkout attempts',
+      'Customers can browse but cannot complete some purchases',
+      'Support reports increasing'
+    ],
+    business: {
+      conversionAffected: true,
+      revenueImpact: 'Revenue impact not yet quantified',
+      customerTrustRisk: 'HIGH',
+      businessSeverity: 'SEV-1'
+    }
+  },
   participants: [
     {
       id: 'p-neha',
@@ -182,37 +202,345 @@ const DEFAULT_INCIDENT: IncidentCommanderState = {
   demoStep: 0
 };
 
-// DEMO SCENARIO SEQUENCE DATA (Phase 20 & 21)
-const DEMO_SEQUENCE = [
+export interface InterimSpeakerCard {
+  speaker: string;
+  speakerRole: ParticipantRole;
+  type: 'human' | 'ai';
+  text: string;
+}
+
+const DEMO_STEPS = [
+  // STEP 1 — ECHOAID X
   {
+    stepNum: 1,
+    speaker: 'EchoAid X',
+    speakerRole: 'AI Incident Commander' as ParticipantRole,
+    type: 'ai' as const,
+    text: "Hello team. I'm EchoAid X, your AI Incident Commander. I'll track the incident, separate facts from hypotheses, assign actions, and keep unresolved risks visible. Arjun, what's happening?",
+    updateState: null
+  },
+  // STEP 2 — ARJUN
+  {
+    stepNum: 2,
     speaker: 'Arjun',
     speakerRole: 'Backend Engineer' as ParticipantRole,
-    text: 'The new database connection pool might be overloaded.',
-    aiUpdate: 'Hypothesis logged: Database connection pool overload (UNCONFIRMED).'
+    type: 'human' as const,
+    text: "We're seeing HTTP 503 errors from the payment API, and checkout failures are increasing.",
+    updateState: (prev: IncidentCommanderState) => ({
+      ...prev,
+      facts: [
+        ...prev.facts,
+        {
+          id: `fact-${Date.now()}-1`,
+          text: "HTTP 503 errors from payment API",
+          sourceParticipantId: "p-arjun",
+          sourceParticipantName: "Arjun",
+          sourceParticipantRole: "Backend Engineer" as ParticipantRole,
+          confidence: "Confirmed" as const,
+          evidenceText: "Arjun: 'HTTP 503 errors from the payment API'",
+          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false })
+        },
+        {
+          id: `fact-${Date.now()}-2`,
+          text: "Checkout failures increasing",
+          sourceParticipantId: "p-arjun",
+          sourceParticipantName: "Arjun",
+          sourceParticipantRole: "Backend Engineer" as ParticipantRole,
+          confidence: "Confirmed" as const,
+          evidenceText: "Arjun: 'checkout failures are increasing'",
+          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false })
+        }
+      ],
+      impactModel: {
+        ...prev.impactModel,
+        technical: [
+          'Payment API affected',
+          'Checkout affected'
+        ],
+        customer: prev.impactModel?.customer || [],
+        business: prev.impactModel?.business || {
+          conversionAffected: true,
+          revenueImpact: 'Revenue impact not yet quantified',
+          customerTrustRisk: 'HIGH' as const,
+          businessSeverity: 'SEV-1' as const
+        }
+      }
+    })
   },
+  // STEP 3 — ECHOAID X
   {
+    stepNum: 3,
+    speaker: 'EchoAid X',
+    speakerRole: 'AI Incident Commander' as ParticipantRole,
+    type: 'ai' as const,
+    text: "I've recorded those as confirmed facts. The payment flow is currently experiencing a SEV-1 incident.",
+    updateState: null
+  },
+  // STEP 4 — ANANYA
+  {
+    stepNum: 4,
+    speaker: 'Ananya',
+    speakerRole: 'Frontend Engineer' as ParticipantRole,
+    type: 'human' as const,
+    text: "Checkout requests are failing, but the rest of the application is loading normally.",
+    updateState: (prev: IncidentCommanderState) => ({
+      ...prev,
+      facts: [
+        ...prev.facts,
+        {
+          id: `fact-${Date.now()}-3`,
+          text: "Non-payment parts of application are functioning",
+          sourceParticipantId: "p-ananya",
+          sourceParticipantName: "Ananya",
+          sourceParticipantRole: "Frontend Engineer" as ParticipantRole,
+          confidence: "Confirmed" as const,
+          evidenceText: "Ananya: 'rest of the application is loading normally'",
+          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false })
+        }
+      ],
+      impactModel: {
+        ...prev.impactModel,
+        technical: [
+          'Payment flow affected',
+          'General application remains available'
+        ],
+        customer: prev.impactModel?.customer || [],
+        business: prev.impactModel?.business || {
+          conversionAffected: true,
+          revenueImpact: 'Revenue impact not yet quantified',
+          customerTrustRisk: 'HIGH' as const,
+          businessSeverity: 'SEV-1' as const
+        }
+      }
+    })
+  },
+  // STEP 5 — PRIYA
+  {
+    stepNum: 5,
     speaker: 'Priya',
-    speakerRole: 'SRE / DevOps' as ParticipantRole,
-    text: 'Database CPU looks normal at 42%.',
-    aiUpdate: 'Fact logged: Database CPU normal (Contradiction noted: DB overload unconfirmed).'
+    speakerRole: 'SRE' as ParticipantRole,
+    type: 'human' as const,
+    text: "Infrastructure looks healthy. The database is healthy, and CPU and memory are within normal limits. I don't see infrastructure saturation.",
+    updateState: (prev: IncidentCommanderState) => ({
+      ...prev,
+      facts: [
+        ...prev.facts,
+        {
+          id: `fact-${Date.now()}-4`,
+          text: "Infrastructure healthy (Database: Healthy, CPU: Normal, Memory: Normal, Infrastructure saturation: Not observed)",
+          sourceParticipantId: "p-priya",
+          sourceParticipantName: "Priya",
+          sourceParticipantRole: "SRE" as ParticipantRole,
+          confidence: "Confirmed" as const,
+          evidenceText: "Priya: 'Database is healthy, and CPU and memory are within normal limits'",
+          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false })
+        }
+      ]
+    })
   },
+  // STEP 6 — ECHOAID X
   {
-    speaker: 'Priya',
-    speakerRole: 'SRE / DevOps' as ParticipantRole,
-    text: 'Deployment v2.8 happened shortly before the error spike.',
-    aiUpdate: 'Hypothesis logged: Deployment v2.8 regression (LIKELY).'
+    stepNum: 6,
+    speaker: 'EchoAid X',
+    speakerRole: 'AI Incident Commander' as ParticipantRole,
+    type: 'ai' as const,
+    text: "Recorded. Infrastructure saturation is not a confirmed cause. Customer impact is also being reported: users can browse the application, but some cannot complete purchases.",
+    updateState: (prev: IncidentCommanderState) => ({
+      ...prev,
+      impactModel: {
+        ...prev.impactModel,
+        technical: prev.impactModel?.technical || ['Payment flow affected', 'General application remains available'],
+        customer: [
+          'Failed payments',
+          'Checkout failures',
+          'Customers unable to complete some purchases'
+        ],
+        business: {
+          conversionAffected: true,
+          revenueImpact: 'Revenue impact not yet quantified',
+          customerTrustRisk: 'HIGH' as const,
+          businessSeverity: 'SEV-1' as const
+        }
+      }
+    })
   },
+  // STEP 7 — RAHUL
   {
-    speaker: 'Neha',
-    speakerRole: 'Incident Commander' as ParticipantRole,
-    text: "Let's roll back v2.8.",
-    aiUpdate: 'Decision proposed: Rollback Deployment v2.8.'
+    stepNum: 7,
+    speaker: 'Rahul',
+    speakerRole: 'Support Engineer' as ParticipantRole,
+    type: 'human' as const,
+    text: "Support is receiving multiple reports of failed payments and checkout attempts, and the reports started increasing around the same time as the outage.",
+    updateState: (prev: IncidentCommanderState) => ({
+      ...prev,
+      impactModel: {
+        ...prev.impactModel,
+        technical: prev.impactModel?.technical || ['Payment flow affected', 'General application remains available'],
+        customer: [
+          'Failed payments',
+          'Checkout failures',
+          'Customers unable to complete some purchases',
+          'Support reports increasing'
+        ],
+        business: prev.impactModel?.business || {
+          conversionAffected: true,
+          revenueImpact: 'Revenue impact not yet quantified',
+          customerTrustRisk: 'HIGH' as const,
+          businessSeverity: 'SEV-1' as const
+        }
+      },
+      facts: [
+        ...prev.facts,
+        {
+          id: `fact-${Date.now()}-5`,
+          text: "Support reports increasing in same period as technical outage",
+          sourceParticipantId: "p-rahul",
+          sourceParticipantName: "Rahul",
+          sourceParticipantRole: "Support Engineer" as ParticipantRole,
+          confidence: "Confirmed" as const,
+          evidenceText: "Rahul: 'reports started increasing around the same time as the outage'",
+          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false })
+        }
+      ]
+    })
   },
+  // STEP 8 — ECHOAID X
   {
+    stepNum: 8,
+    speaker: 'EchoAid X',
+    speakerRole: 'AI Incident Commander' as ParticipantRole,
+    type: 'ai' as const,
+    text: "Customer impact is confirmed through both technical evidence and support reports. The incident timeline now shows the outage beginning around 08:42 UTC.",
+    updateState: (prev: IncidentCommanderState) => ({
+      ...prev,
+      timeline: [
+        ...prev.timeline,
+        {
+          id: `evt-${Date.now()}-1`,
+          timestamp: '08:42:00',
+          eventType: 'SYSTEM_SIGNAL_RECEIVED' as const,
+          title: 'First 503 errors on Payment API',
+          description: 'HTTP 503 error rate spike detected on payment endpoint',
+          source: 'Telemetry',
+          confidenceOrStatus: 'Confirmed'
+        },
+        {
+          id: `evt-${Date.now()}-2`,
+          timestamp: '08:42:00',
+          eventType: 'SYSTEM_SIGNAL_RECEIVED' as const,
+          title: 'Customer Reports Increasing',
+          description: 'Support ticket influx regarding failed checkouts correlated with 08:42 UTC onset',
+          source: 'Support Queue',
+          confidenceOrStatus: 'Confirmed'
+        }
+      ]
+    })
+  },
+  // STEP 9 — ARJUN
+  {
+    stepNum: 9,
     speaker: 'Arjun',
     speakerRole: 'Backend Engineer' as ParticipantRole,
-    text: 'I can perform the rollback.',
-    aiUpdate: 'Action assigned to Arjun: Rollback v2.8. 🛑 CRITICAL ACTION APPROVAL REQUESTED.'
+    type: 'human' as const,
+    text: "I found matching failures in the Stripe Bridge logs. The timestamps line up with the incident, so the latest Stripe Bridge deployment may be contributing to the failures.",
+    updateState: (prev: IncidentCommanderState) => ({
+      ...prev,
+      hypotheses: [
+        ...prev.hypotheses,
+        {
+          id: `hyp-${Date.now()}-stripe`,
+          text: "Stripe Bridge may be contributing to the outage",
+          sourceParticipantId: "p-arjun",
+          sourceParticipantName: "Arjun",
+          sourceParticipantRole: "Backend Engineer" as ParticipantRole,
+          status: "UNCONFIRMED" as const,
+          evidenceText: "Matching Stripe Bridge failures; Timestamps align with incident",
+          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false })
+        }
+      ]
+    })
+  },
+  // STEP 10 — PRIYA
+  {
+    stepNum: 10,
+    speaker: 'Priya',
+    speakerRole: 'SRE' as ParticipantRole,
+    type: 'human' as const,
+    text: "I checked the deployment history. The latest Stripe Bridge deployment happened shortly before the first 503 errors.",
+    updateState: (prev: IncidentCommanderState) => ({
+      ...prev,
+      hypotheses: prev.hypotheses.map(h =>
+        h.text.includes("Stripe Bridge") ? { ...h, status: "LIKELY" as const } : h
+      ),
+      timeline: [
+        ...prev.timeline,
+        {
+          id: `evt-${Date.now()}-3`,
+          timestamp: '08:40:00',
+          eventType: 'SYSTEM_SIGNAL_RECEIVED' as const,
+          title: 'Stripe Bridge Deployment',
+          description: 'Latest Stripe Bridge deployment preceded first 503 errors',
+          source: 'Priya (SRE)',
+          confidenceOrStatus: 'Correlated'
+        }
+      ]
+    })
+  },
+  // STEP 11 — ECHOAID X
+  {
+    stepNum: 11,
+    speaker: 'EchoAid X',
+    speakerRole: 'AI Incident Commander' as ParticipantRole,
+    type: 'ai' as const,
+    text: "That strengthens the Stripe Bridge hypothesis, but root cause is still unconfirmed. Priya owns the deployment verification action. Based on the available evidence, I recommend rolling back the latest Stripe Bridge deployment.",
+    updateState: (prev: IncidentCommanderState) => ({
+      ...prev,
+      actions: [
+        ...prev.actions,
+        {
+          id: `act-${Date.now()}-priya`,
+          task: "Verify Stripe Bridge deployment / prepare rollback",
+          ownerName: "Priya",
+          ownerRole: "SRE" as ParticipantRole,
+          priority: "HIGH" as const,
+          status: "IN_PROGRESS" as const,
+          createdAt: new Date().toLocaleTimeString('en-US', { hour12: false })
+        }
+      ]
+    })
+  },
+  // STEP 12 — ARJUN + ECHOAID X
+  {
+    stepNum: 12,
+    speaker: 'Arjun',
+    speakerRole: 'Backend Engineer' as ParticipantRole,
+    type: 'human' as const,
+    text: "I agree. We should roll back the latest Stripe Bridge deployment.",
+    updateState: null,
+    subFollowup: {
+      speaker: 'EchoAid X',
+      speakerRole: 'AI Incident Commander' as ParticipantRole,
+      type: 'ai' as const,
+      text: "Rollback is a critical production action. I recommend it based on the current evidence, but I require explicit human confirmation before execution.",
+      updateState: (prev: IncidentCommanderState) => {
+        const nowTs = new Date().toLocaleTimeString('en-US', { hour12: false });
+        const criticalAction: CriticalAction = {
+          id: `ca-${Date.now()}-rollback`,
+          action: "Roll back latest Stripe Bridge deployment",
+          targetSystem: "Stripe Bridge Service",
+          reason: "Supporting evidence connects deployment timing and Stripe Bridge failures with payment incident",
+          risk: "Production deployment rollback",
+          isSimulated: true,
+          status: 'PENDING_APPROVAL',
+          evidence: "Matching Stripe Bridge logs & deployment timing align with 08:42 UTC 503 outage",
+          requestedAt: nowTs
+        };
+        return {
+          ...prev,
+          criticalActions: [...prev.criticalActions, criticalAction]
+        };
+      }
+    }
   }
 ];
 
@@ -230,6 +558,7 @@ interface IncidentContextType {
   setGeneratedReport: (report: { markdownReport: string; rawIncidentData: any } | null) => void;
   isDemoPlaying: boolean;
   demoStep: number;
+  interimSpeakerCard: InterimSpeakerCard | null;
   submitTranscriptStatement: (speaker: string, speakerRole: ParticipantRole, text: string) => Promise<void>;
   resolveConflict: (conflictId: string, choice: string, confirmedValue: string) => Promise<void>;
   approveCriticalAction: (actionId: string) => Promise<void>;
@@ -253,6 +582,232 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [generatedReport, setGeneratedReport] = useState<{ markdownReport: string; rawIncidentData: any } | null>(null);
   const [isDemoPlaying, setIsDemoPlaying] = useState(false);
   const [demoStepIndex, setDemoStepIndex] = useState(0);
+  const [interimSpeakerCard, setInterimSpeakerCard] = useState<InterimSpeakerCard | null>(null);
+
+  const demoTimeoutsRef = useRef<any[]>([]);
+  const isDemoCancelledRef = useRef<boolean>(false);
+
+  const stopDemoRunner = () => {
+    isDemoCancelledRef.current = true;
+    demoTimeoutsRef.current.forEach((t: any) => clearTimeout(t));
+    demoTimeoutsRef.current = [];
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setInterimSpeakerCard(null);
+    setIsDemoPlaying(false);
+  };
+
+  const speakSpeakerStatement = (
+    speakerName: string,
+    speakerRole: ParticipantRole,
+    speakerType: 'human' | 'ai',
+    fullText: string
+  ): Promise<void> => {
+    return new Promise((resolve) => {
+      if (isDemoCancelledRef.current) {
+        setInterimSpeakerCard(null);
+        resolve();
+        return;
+      }
+
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+
+      const words = fullText.split(' ');
+      let wordIdx = 0;
+      setInterimSpeakerCard({
+        speaker: speakerName,
+        speakerRole: speakerRole,
+        type: speakerType,
+        text: words[0] || ''
+      });
+
+      const intervalMs = Math.max(80, Math.min(180, Math.floor(2200 / Math.max(words.length, 1))));
+      const wordInterval = setInterval(() => {
+        if (isDemoCancelledRef.current) {
+          clearInterval(wordInterval);
+          setInterimSpeakerCard(null);
+          resolve();
+          return;
+        }
+        wordIdx += 2;
+        if (wordIdx >= words.length) {
+          setInterimSpeakerCard({
+            speaker: speakerName,
+            speakerRole: speakerRole,
+            type: speakerType,
+            text: fullText
+          });
+          clearInterval(wordInterval);
+        } else {
+          setInterimSpeakerCard({
+            speaker: speakerName,
+            speakerRole: speakerRole,
+            type: speakerType,
+            text: words.slice(0, wordIdx).join(' ')
+          });
+        }
+      }, intervalMs);
+
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(fullText);
+        const voices = window.speechSynthesis.getVoices();
+        const sNameLower = speakerName.toLowerCase();
+
+        if (sNameLower.includes('echoaid')) {
+          utterance.pitch = 1.15;
+          utterance.rate = 1.18;
+          const v = voices.find(v => (v.name.includes('Google') && v.name.includes('UK')) || v.name.includes('Zira') || v.name.includes('Hazel') || v.lang.startsWith('en-GB'));
+          if (v) utterance.voice = v;
+        } else if (sNameLower.includes('arjun')) {
+          utterance.pitch = 0.85;
+          utterance.rate = 1.25;
+          const v = voices.find(v => (v.name.includes('Google') && v.name.includes('US') && v.name.includes('Male')) || v.name.includes('David') || v.name.includes('Guy') || (v.name.includes('Male') && v.lang.startsWith('en-US')));
+          if (v) utterance.voice = v;
+        } else if (sNameLower.includes('ananya')) {
+          utterance.pitch = 1.20;
+          utterance.rate = 1.22;
+          const v = voices.find(v => v.name.includes('Jenny') || v.name.includes('Samantha') || (v.name.includes('Female') && v.lang.startsWith('en-US')));
+          if (v) utterance.voice = v;
+        } else if (sNameLower.includes('priya')) {
+          utterance.pitch = 0.95;
+          utterance.rate = 1.15;
+          const v = voices.find(v => v.name.includes('Hazel') || v.name.includes('Sonia') || v.name.includes('Catherine') || v.lang.startsWith('en-GB') || v.lang.startsWith('en-AU'));
+          if (v) utterance.voice = v;
+        } else if (sNameLower.includes('rahul')) {
+          utterance.pitch = 1.05;
+          utterance.rate = 1.20;
+          const v = voices.find(v => v.name.includes('Mark') || v.name.includes('George') || v.name.includes('Prabhat') || (v.name.includes('Male') && v.lang.startsWith('en-GB')));
+          if (v) utterance.voice = v;
+        }
+
+        utterance.onend = () => {
+          clearInterval(wordInterval);
+          setInterimSpeakerCard(null);
+          resolve();
+        };
+
+        utterance.onerror = () => {
+          clearInterval(wordInterval);
+          setInterimSpeakerCard(null);
+          resolve();
+        };
+
+        window.speechSynthesis.speak(utterance);
+      } else {
+        setTimeout(() => {
+          clearInterval(wordInterval);
+          setInterimSpeakerCard(null);
+          resolve();
+        }, 2200);
+      }
+    });
+  };
+
+  const startDemoScenario = async () => {
+    stopDemoRunner();
+    isDemoCancelledRef.current = false;
+    setIsDemoPlaying(true);
+    setDemoStepIndex(0);
+
+    try {
+      await apiService.resetIncident('INC-2048');
+    } catch (e) {
+      console.warn("Backend reset during demo start", e);
+    }
+    if (isDemoCancelledRef.current) return;
+
+    // Reset local incident state to EMPTY transcript & empty facts/hypotheses/actions/decisions
+    const emptyDemoState: IncidentCommanderState = {
+      ...DEFAULT_INCIDENT,
+      facts: [],
+      hypotheses: [],
+      decisions: [],
+      actions: [],
+      conflicts: [],
+      transcript: []
+    };
+    setCurrentIncident(emptyDemoState);
+    setInterimSpeakerCard(null);
+
+    // Execute DEMO_STEPS sequentially: EchoAid X -> Arjun -> EchoAid X -> Arjun ...
+    for (let i = 0; i < DEMO_STEPS.length; i++) {
+      if (isDemoCancelledRef.current) break;
+      const step = DEMO_STEPS[i];
+      setDemoStepIndex(step.stepNum);
+
+      // Progressive speech utterance & voice separation
+      await speakSpeakerStatement(step.speaker, step.speakerRole, step.type, step.text);
+      if (isDemoCancelledRef.current) break;
+
+      // Post finalized transcript card
+      const nowTime = new Date().toLocaleTimeString('en-US', { hour12: false });
+      const finalCard = {
+        id: `tr-step-${i}-${Date.now()}`,
+        speaker: step.speaker,
+        speakerRole: step.speakerRole,
+        type: step.type,
+        status: 'final' as const,
+        text: step.text,
+        timestamp: nowTime
+      };
+
+      setCurrentIncident(prev => {
+        const nextState = {
+          ...prev,
+          transcript: [...prev.transcript, finalCard]
+        };
+        if (step.updateState) {
+          const updated = step.updateState(nextState);
+          const pendingAction = updated.criticalActions?.find((ca: any) => ca.status === 'PENDING_APPROVAL');
+          if (pendingAction) {
+            setPendingCriticalAction(pendingAction);
+          }
+          return updated;
+        }
+        return nextState;
+      });
+
+      if ((step as any).subFollowup && !isDemoCancelledRef.current) {
+        const sub = (step as any).subFollowup;
+        await new Promise(res => setTimeout(res, 350));
+        await speakSpeakerStatement(sub.speaker, sub.speakerRole, sub.type, sub.text);
+        if (isDemoCancelledRef.current) break;
+
+        const subNowTime = new Date().toLocaleTimeString('en-US', { hour12: false });
+        const subFinalCard = {
+          id: `tr-step-sub-${i}-${Date.now()}`,
+          speaker: sub.speaker,
+          speakerRole: sub.speakerRole,
+          type: sub.type,
+          status: 'final' as const,
+          text: sub.text,
+          timestamp: subNowTime
+        };
+
+        setCurrentIncident(prev => {
+          const nextState = {
+            ...prev,
+            transcript: [...prev.transcript, subFinalCard]
+          };
+          if (sub.updateState) {
+            const updated = sub.updateState(nextState);
+            const pendingAction = updated.criticalActions?.find((ca: any) => ca.status === 'PENDING_APPROVAL');
+            if (pendingAction) {
+              setPendingCriticalAction(pendingAction);
+            }
+            return updated;
+          }
+          return nextState;
+        });
+      }
+
+      // Pause briefly between speakers
+      await new Promise(res => setTimeout(res, 350));
+    }
+  };
 
   // Load backend state on mount & connect Real-time SSE Stream
   useEffect(() => {
@@ -329,7 +884,9 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const segId = `tr-${Date.now()}`;
 
     setCurrentIncident(prev => {
-      const nextTranscript = [...prev.transcript, { id: segId, speaker, speakerRole, text, timestamp: nowTime }];
+      const isAI = speaker === 'EchoAid X' || speakerRole === 'AI Incident Commander';
+      const humanSeg = { id: segId, speaker, speakerRole, type: isAI ? ('ai' as const) : ('human' as const), status: 'final' as const, text, timestamp: nowTime };
+      const nextTranscript = [...prev.transcript, humanSeg];
       const nextTimeline = [
         ...prev.timeline,
         {
@@ -383,9 +940,24 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     else if (lower.includes('?') || lower.startsWith('what ') || lower.startsWith('how ') || lower.startsWith('why ') || lower.startsWith('is there ') || lower.startsWith('where ')) {
       spokenResponse = `Investigating SEV-1 Payment Outage. Telemetry and timeline are live on your dashboard.`;
     }
-    // Note: Regular non-question statements are recorded silently without robotic echoing
 
     if (spokenResponse) {
+      const aiSegId = `tr-ai-${Date.now()}`;
+      setCurrentIncident(prev => ({
+        ...prev,
+        transcript: [
+          ...prev.transcript.map(t => t.type === 'ai' ? { ...t, status: 'final' as const } : t),
+          {
+            id: aiSegId,
+            speaker: 'EchoAid X',
+            speakerRole: 'AI Incident Commander',
+            type: 'ai' as const,
+            status: 'speaking' as const,
+            text: spokenResponse,
+            timestamp: nowTime
+          }
+        ]
+      }));
       speakAISummary(spokenResponse);
     }
 
@@ -471,47 +1043,27 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }));
     }
   };
-
-  const startDemoScenario = async () => {
-    setIsDemoPlaying(true);
-    setDemoStepIndex(0);
-    const backendDemo = await apiService.startDemoIncident();
-    if (backendDemo) {
-      setCurrentIncident(backendDemo);
-    } else {
-      setCurrentIncident(DEFAULT_INCIDENT);
-    }
-    speakAISummary("EchoAid X EcoSphere Demo Scenario initiated: Payment API Outage INC-2048.");
-  };
-
-  const stepNextDemoEvent = async () => {
-    if (demoStepIndex < DEMO_SEQUENCE.length) {
-      const step = DEMO_SEQUENCE[demoStepIndex];
-      await submitTranscriptStatement(step.speaker, step.speakerRole, step.text);
-      setDemoStepIndex(prev => prev + 1);
-    } else {
-      setIsDemoPlaying(false);
-      speakAISummary("Demo scenario sequence complete. Ready to generate final incident summary report.");
-    }
-  };
-
   const resetIncidentRoom = async () => {
+    stopDemoRunner();
     try {
       const res = await apiService.resetIncident('INC-2048');
       if (res && res.id) {
-        setCurrentIncident(res);
+        setCurrentIncident({ ...res, transcript: [], facts: [], hypotheses: [], decisions: [], actions: [] });
       } else {
-        setCurrentIncident(DEFAULT_INCIDENT);
+        setCurrentIncident({ ...DEFAULT_INCIDENT, transcript: [], facts: [], hypotheses: [], decisions: [], actions: [] });
       }
-      setIsDemoPlaying(false);
-      setDemoStepIndex(0);
-      setPendingCriticalAction(null);
-      setEvidenceDrawerItem(null);
-      setGeneratedReport(null);
     } catch (err) {
       console.warn("Failed resetting incident room", err);
-      setCurrentIncident(DEFAULT_INCIDENT);
+      setCurrentIncident({ ...DEFAULT_INCIDENT, transcript: [], facts: [], hypotheses: [], decisions: [], actions: [] });
     }
+    setDemoStepIndex(0);
+    setPendingCriticalAction(null);
+    setEvidenceDrawerItem(null);
+    setGeneratedReport(null);
+  };
+
+  const stepNextDemoEvent = async () => {
+    // Automated runner handles timing sequentially
   };
 
   const generateReport = async () => {
@@ -542,6 +1094,7 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setGeneratedReport,
       isDemoPlaying,
       demoStep: demoStepIndex,
+      interimSpeakerCard,
       submitTranscriptStatement,
       resolveConflict,
       approveCriticalAction,

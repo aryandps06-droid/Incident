@@ -41,7 +41,8 @@ export const LiveRoomPanel: React.FC = () => {
     setActiveSpeakerRole, 
     activeSpeaker, 
     setActiveSpeaker,
-    submitTranscriptStatement
+    submitTranscriptStatement,
+    interimSpeakerCard
   } = useIncident();
 
   const { 
@@ -97,7 +98,7 @@ export const LiveRoomPanel: React.FC = () => {
         behavior: 'smooth'
       });
     }
-  }, [currentIncident.transcript, interimTranscript]);
+  }, [currentIncident.transcript, interimTranscript, interimSpeakerCard]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,7 +163,7 @@ export const LiveRoomPanel: React.FC = () => {
       {/* Transcript Feed */}
       <div 
         ref={transcriptContainerRef}
-        className="flex-1 overflow-y-auto my-3 pr-1.5 flex flex-col gap-2.5 relative z-10 scrollbar-thin scrollbar-thumb-cyan-500/20"
+        className="flex-1 overflow-y-auto my-3 pr-1.5 pb-8 flex flex-col gap-2.5 relative z-10 scrollbar-thin scrollbar-thumb-cyan-500/20"
       >
         {currentIncident.transcript.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs font-mono">
@@ -172,7 +173,8 @@ export const LiveRoomPanel: React.FC = () => {
         ) : (
           <AnimatePresence initial={false}>
             {currentIncident.transcript.map(msg => {
-              const isAI = msg.speaker === 'EchoAid X' || msg.speakerRole === 'AI Incident Commander';
+              const isAI = msg.speaker === 'EchoAid X' || msg.speakerRole === 'AI Incident Commander' || msg.type === 'ai';
+
               return (
                 <motion.div
                   key={msg.id}
@@ -196,9 +198,13 @@ export const LiveRoomPanel: React.FC = () => {
                           <User className="w-3 h-3 text-cyan-300" />
                         </div>
                       )}
-                      <span className="text-xs font-semibold text-slate-100">{msg.speaker}</span>
-                      <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded-md bg-slate-800/90 text-slate-300 border border-slate-700">
-                        {msg.speakerRole || 'Observer'}
+                      <span className="text-xs font-bold text-slate-100">{msg.speaker}</span>
+                      <span className={`text-[9.5px] font-mono px-1.5 py-0.5 rounded-md border ${
+                        isAI
+                          ? 'bg-purple-900/80 text-purple-200 border-purple-400/40'
+                          : 'bg-slate-800/90 text-slate-300 border-slate-700'
+                      }`}>
+                        {msg.speakerRole || (isAI ? 'AI Incident Commander' : 'Observer')}
                       </span>
                     </div>
                     <span className="text-[10px] font-mono text-slate-400">{msg.timestamp}</span>
@@ -211,7 +217,42 @@ export const LiveRoomPanel: React.FC = () => {
         )}
 
         {/* Live Interim Transcript Stream */}
-        {interimTranscript && (
+        {interimSpeakerCard ? (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`p-3.5 rounded-xl border flex flex-col gap-1.5 shadow-lg backdrop-blur-md relative shrink-0 transition-all duration-200 ${
+              interimSpeakerCard.type === 'ai'
+                ? 'bg-purple-950/80 border-purple-500/60 shadow-purple-900/30 text-purple-100 ring-1 ring-purple-500/40'
+                : 'bg-slate-900/90 border-slate-700/80 shadow-black/40 text-slate-100'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {interimSpeakerCard.type === 'ai' ? (
+                  <Bot className="w-4 h-4 text-purple-400 animate-pulse shrink-0" />
+                ) : (
+                  <User className="w-4 h-4 text-cyan-400 shrink-0" />
+                )}
+                <span className="text-xs font-bold text-slate-100">{interimSpeakerCard.speaker}</span>
+                <span className={`text-[9.5px] font-mono px-1.5 py-0.5 rounded-md border ${
+                  interimSpeakerCard.type === 'ai'
+                    ? 'bg-purple-900/90 text-purple-200 border-purple-400/50'
+                    : 'bg-slate-800/90 text-slate-300 border-slate-700'
+                }`}>
+                  {interimSpeakerCard.speakerRole}
+                </span>
+              </div>
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-cyan-950/90 text-cyan-300 border border-cyan-500/40 animate-pulse font-bold flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-cyan-400 animate-spin" />
+                LIVE SPEECH
+              </span>
+            </div>
+            <p className={`text-xs sm:text-sm leading-relaxed font-sans pl-6 break-words font-medium ${interimSpeakerCard.type === 'ai' ? 'text-purple-100' : 'text-slate-100'}`}>
+              "{interimSpeakerCard.text}"
+            </p>
+          </motion.div>
+        ) : interimTranscript ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -220,7 +261,7 @@ export const LiveRoomPanel: React.FC = () => {
             <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
             <span>Streaming speech: "{interimTranscript}"</span>
           </motion.div>
-        )}
+        ) : null}
       </div>
 
       {/* Input Form & Speech Controls */}

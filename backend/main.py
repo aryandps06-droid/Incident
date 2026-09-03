@@ -476,10 +476,6 @@ AGORA_CUSTOMER_ID = os.getenv("AGORA_CUSTOMER_ID")
 AGORA_CUSTOMER_SECRET = os.getenv("AGORA_CUSTOMER_SECRET")
 AGORA_PIPELINE_ID = os.getenv("AGORA_PIPELINE_ID")
 AGORA_APP_CERTIFICATE = os.getenv("AGORA_APP_CERTIFICATE")
-print("[AGORA INIT] APP ID =", AGORA_APP_ID)
-print("[AGORA INIT] CERT =", AGORA_APP_CERTIFICATE)
-print("[AGORA INIT] CUSTOMER ID =", AGORA_CUSTOMER_ID)
-print("[AGORA INIT] PIPELINE ID =", AGORA_PIPELINE_ID)
 
 class AgoraJoinRequest(BaseModel):
     channel: Optional[str] = "echoaid-room"
@@ -543,7 +539,7 @@ def join_agora(req: Optional[AgoraJoinRequest] = None):
             # Deduplication: if the exact same agent was created in the last 20 seconds, do not recreate
             now = time.time()
             if current_echoaid_agent_id and (now - last_join_timestamp) < 20.0 and last_join_mode == mode:
-                print(f"[AGORA AGENT] Reusing active agent session {current_echoaid_agent_id} (joined {now - last_join_timestamp:.1f}s ago)")
+                print(f"[AGORA AGENT] Reusing active agent session {current_echoaid_agent_id}")
                 return {
                     "status": "already_running",
                     "agent_id": current_echoaid_agent_id,
@@ -556,7 +552,7 @@ def join_agora(req: Optional[AgoraJoinRequest] = None):
             if not AGORA_APP_ID or not AGORA_CUSTOMER_ID or not AGORA_CUSTOMER_SECRET or not AGORA_PIPELINE_ID:
                 raise HTTPException(
                     status_code=500,
-                    detail="Agora environment variables (AGORA_APP_ID, AGORA_CUSTOMER_ID, AGORA_CUSTOMER_SECRET, AGORA_PIPELINE_ID) are missing."
+                    detail="Agora environment variables are missing."
                 )
 
             expiration = 3600
@@ -574,30 +570,14 @@ def join_agora(req: Optional[AgoraJoinRequest] = None):
                     privilege_expire
                 )
 
-            print("[AGORA DEBUG] join requested")
-            print(f"[AGORA DEBUG] channel = {channel_name}")
-            print(f"[AGORA DEBUG] user_uid = {user_uid}")
-            print(f"[AGORA DEBUG] agent_uid = {agent_uid}")
-            print(f"[AGORA DEBUG] pipeline_id = {AGORA_PIPELINE_ID}")
-            print("[AGORA DEBUG] agent token generated = true")
-            print(f"[AGORA DEBUG] token uid = {agent_uid}")
-            print(f"[AGORA TOKEN] AGENT token UID = {agent_uid}")
-            print(f"[AGORA TOKEN] AGENT channel = {channel_name}")
-            print(f"[AGORA PAYLOAD]\nchannel={channel_name}\nagent_rtc_uid={agent_uid}\nremote_rtc_uids=*\ntoken_present=true\npipeline_id={AGORA_PIPELINE_ID}")
-
-            auth = base64.b64encode(
-                f"{AGORA_CUSTOMER_ID}:{AGORA_CUSTOMER_SECRET}".encode()
-            ).decode()
-            headers = {
-                "Authorization": f"Basic {auth}",
-                "Content-Type": "application/json"
-            }
+            print("[AGORA VOICE ENGINE] Agent join requested")
+            print(f"[AGORA VOICE ENGINE] Channel = {channel_name}, Mode = {mode}")
 
             # Terminate previous agent session ONLY if switching between modes (medical <-> incident)
             if current_echoaid_agent_id and last_join_mode is not None and last_join_mode != mode:
                 try:
                     leave_url = f"https://api.agora.io/api/conversational-ai-agent/v2/projects/{AGORA_APP_ID}/agents/{current_echoaid_agent_id}/leave"
-                    requests.post(leave_url, headers=headers, timeout=5)
+                    requests.post(leave_url, auth=(AGORA_CUSTOMER_ID, AGORA_CUSTOMER_SECRET), timeout=5)
                     print(f"[AGORA AGENT] Mode switched from {last_join_mode} to {mode}. Terminated previous agent session: {current_echoaid_agent_id}")
                 except Exception as leave_err:
                     print(f"[AGORA AGENT WARNING] Error leaving previous agent session: {leave_err}")
@@ -630,40 +610,24 @@ def join_agora(req: Optional[AgoraJoinRequest] = None):
                 }
             }
 
-            sanitized_payload = {
-                "name": channel_name,
-                "pipeline_id": AGORA_PIPELINE_ID,
-                "properties": {
-                    "channel": channel_name,
-                    "token": "[PROTECTED_AGENT_RTC_TOKEN]",
-                    "agent_rtc_uid": str(agent_uid),
-                    "remote_rtc_uids": ["*"],
-                    "llm": {
-                        "system_messages": [
-                            {
-                                "role": "system",
-                                "content": selected_prompt
-                            }
-                        ],
-                        "greeting_message": greeting_text
-                    }
-                }
-            }
-
-            print("\n========== AGORA AGENT JOIN REQUEST ==========")
-            print("URL:", url)
-            print("HEADERS: Authorization: Basic [PROTECTED]")
-            print("SANITIZED PAYLOAD (Sent to Agora API):")
-            print(json.dumps(sanitized_payload, indent=4))
-            print("==============================================\n")
-
             print(f"[VOICE LOOP] 07 RESPONSE_SENT_TO_AGORA channel={channel_name} mode={mode} agent_uid={agent_uid}")
             response = requests.post(
                 url,
-                headers=headers,
+                auth=(AGORA_CUSTOMER_ID, AGORA_CUSTOMER_SECRET),
                 json=payload,
                 timeout=10
             )
+
+            if response.status_code == 401:
+                print("[AGORA AGENT ERROR] Authentication failed (401 Unauthorized)")
+                raise HTTPException(
+                    status_code=401,
+                    detail={
+                        "error": "AGORA_AUTH_FAILED",
+                        "status_code": 401,
+                        "message": "Agora rejected the server credentials. Check AGORA_CUSTOMER_ID and AGORA_CUSTOMER_SECRET."
+                    }
+                )
 
             # Handle 409 TaskConflict: reuse existing active agent session without creating an overlapping duplicate
             if response.status_code == 409:
@@ -686,7 +650,6 @@ def join_agora(req: Optional[AgoraJoinRequest] = None):
                         "appId": AGORA_APP_ID
                     }
 
-            print("STATUS CODE:", response.status_code)
             try:
                 resp_data = response.json()
             except Exception:
@@ -700,10 +663,6 @@ def join_agora(req: Optional[AgoraJoinRequest] = None):
                 last_join_timestamp = time.time()
                 last_join_mode = mode
 
-            print(f"[AGORA DEBUG] Agora create response status = {response.status_code}")
-            print(f"[AGORA DEBUG] agent_id = {agent_id}")
-            print(f"[AGORA DEBUG] agent status = {agent_status}")
-            print(f"[AGORA AGENT STATE]\nagent_id={agent_id}\nstatus={agent_status}\nrtc_channel={channel_name}\nrtc_uid={agent_uid}\nmessage=ok")
             print(f"[VOICE LOOP] 08 AGORA_AGENT_RESPONSE_RECEIVED status={response.status_code} agent_id={agent_id} agent_status={agent_status}")
 
             if agent_id and agent_id != "N/A" and response.status_code == 200:
@@ -711,7 +670,7 @@ def join_agora(req: Optional[AgoraJoinRequest] = None):
                 for check_idx in range(1, 4):
                     try:
                         time.sleep(0.5)
-                        st_resp = requests.get(status_url, headers=headers, timeout=5)
+                        st_resp = requests.get(status_url, auth=(AGORA_CUSTOMER_ID, AGORA_CUSTOMER_SECRET), timeout=5)
                         if st_resp.ok:
                             st_json = st_resp.json()
                             curr_st = st_json.get("status", "UNKNOWN")
@@ -720,10 +679,10 @@ def join_agora(req: Optional[AgoraJoinRequest] = None):
                                 resp_data["status"] = "RUNNING"
                                 break
                             elif curr_st in ["FAILED", "STOPPED"]:
-                                print(f"[AGENT RTC ERROR] status={curr_st} reason={st_json.get('message', 'UNKNOWN')}")
+                                print(f"[AGENT RTC ERROR] status={curr_st}")
                                 break
                     except Exception as poll_err:
-                        print(f"[AGENT RTC] Poll check #{check_idx} error: {poll_err}")
+                        print(f"[AGENT RTC] Poll check #{check_idx} error")
 
             if response.status_code >= 400:
                 raise HTTPException(
@@ -1030,4 +989,5 @@ def generate_report(incident_id: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

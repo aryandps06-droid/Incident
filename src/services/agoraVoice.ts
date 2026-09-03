@@ -235,6 +235,23 @@ class AgoraVoiceService {
         }
       });
     } catch { /* Volume indicator optional */ }
+
+    // 6. Real Stream Message (Agora AI Voice Agent Data Stream Subtitles)
+    try {
+      this.rtcClient.on('stream-message', (uid, stream) => {
+        try {
+          const text = new TextDecoder().decode(stream);
+          console.log(`[AGENT STREAM MESSAGE] UID=${uid} len=${stream.byteLength}:`, text);
+          if (typeof window !== 'undefined' && text && text.trim()) {
+            window.dispatchEvent(new CustomEvent('echoaid_ai_subtitle_stream', {
+              detail: { uid, text: text.trim(), timestamp: new Date().toISOString() }
+            }));
+          }
+        } catch (err) {
+          console.warn('[AGENT STREAM MESSAGE WARNING] Error decoding stream message:', err);
+        }
+      });
+    } catch { /* Optional stream-message listener */ }
   }
 
   /**

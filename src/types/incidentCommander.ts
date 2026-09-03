@@ -179,6 +179,17 @@ export interface IntegrationStatus {
   details?: string;
 }
 
+export interface ImpactModel {
+  technical: string[];
+  customer: string[];
+  business: {
+    conversionAffected: boolean;
+    revenueImpact: string;
+    customerTrustRisk: 'HIGH' | 'MEDIUM' | 'LOW';
+    businessSeverity: 'SEV-1' | 'SEV-2' | 'SEV-3';
+  };
+}
+
 export interface IncidentCommanderState {
   id: string;
   title: string;
@@ -191,6 +202,7 @@ export interface IncidentCommanderState {
   incidentCommander: string;
   affectedServices: string[];
   impact: string;
+  impactModel?: ImpactModel;
   participants: Participant[];
   facts: Fact[];
   hypotheses: Hypothesis[];
@@ -204,6 +216,8 @@ export interface IncidentCommanderState {
     id: string;
     speaker: string;
     speakerRole?: ParticipantRole;
+    type?: 'human' | 'ai';
+    status?: 'speaking' | 'final';
     text: string;
     timestamp: string;
   }>;

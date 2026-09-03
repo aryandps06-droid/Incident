@@ -72,7 +72,7 @@ export const IncidentHeader: React.FC = () => {
             <h1 className="text-sm sm:text-base font-semibold text-slate-100 flex items-center gap-2 mt-0.5">
               <span className="font-mono text-cyan-400 font-bold">{currentIncident.id}</span>
               <span className="text-slate-600">•</span>
-              <span className="truncate max-w-[550px] text-slate-200">{currentIncident.title}</span>
+              <span className="text-slate-200 font-semibold">{currentIncident.title}</span>
             </h1>
           </div>
         </div>
@@ -167,7 +167,7 @@ export const IncidentHeader: React.FC = () => {
               className="px-3 py-1.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 animate-bounce cursor-pointer"
             >
               <FastForward className="w-3.5 h-3.5" />
-              <span>Step ({demoStep + 1}/5)</span>
+              <span>Step ({demoStep + 1}/12)</span>
             </button>
           )}
 

@@ -194,11 +194,14 @@ class IncidentEngine:
         now_time = datetime.now().strftime("%H:%M:%S")
         seg_id = f"tr-{uuid.uuid4().hex[:6]}"
 
-        # Append transcript
+        # Append human participant transcript
+        is_ai_speaker = (speaker == "EchoAid X" or speaker_role == "AI Incident Commander")
         inc["transcript"].append({
             "id": seg_id,
             "speaker": speaker,
-            "speakerRole": speaker_role,
+            "speakerRole": speaker_role or "Observer",
+            "type": "ai" if is_ai_speaker else "human",
+            "status": "final" if not is_ai_speaker else "speaking",
             "text": text,
             "timestamp": now_time
         })
@@ -222,6 +225,25 @@ class IncidentEngine:
 
         # Process structured AI analysis payload
         if ai_analysis:
+            # Append AI spoken response text as AI Agent Subtitle entry if present
+            ai_spoken = ai_analysis.get("aiSummarySpoken")
+            if ai_spoken and ai_spoken.strip():
+                ai_seg_id = f"tr-ai-{uuid.uuid4().hex[:6]}"
+                # Finalize any prior speaking entries
+                for existing_t in inc["transcript"]:
+                    if existing_t.get("type") == "ai":
+                        existing_t["status"] = "final"
+
+                inc["transcript"].append({
+                    "id": ai_seg_id,
+                    "speaker": "EchoAid X",
+                    "speakerRole": "AI Incident Commander",
+                    "type": "ai",
+                    "status": "speaking",
+                    "text": ai_spoken.strip(),
+                    "timestamp": now_time
+                })
+                self._add_timeline_event(inc, "AI_RESPONSE_GENERATED", "AI Incident Commander Spoke", ai_spoken.strip(), "EchoAid X", "Spoken", ai_seg_id)
             # Facts
             for f in ai_analysis.get("facts", []):
                 fact_id = f"fact-{uuid.uuid4().hex[:6]}"
@@ -567,6 +589,26 @@ class IncidentEngine:
             "incidentCommander": "Neha",
             "affectedServices": ["Payment API v2", "Checkout Microservice", "Stripe Bridge"],
             "impact": "14.2% payment failure rate, ~450 failed checkout attempts",
+            "impactModel": {
+                "technical": [
+                    "HTTP 503 errors on payment gateway API",
+                    "Checkout endpoint affected",
+                    "Core application still available",
+                    "Database, CPU, and memory healthy"
+                ],
+                "customer": [
+                    "Failed payment transactions",
+                    "Failed checkout attempts",
+                    "Customers can browse but cannot complete some purchases",
+                    "Support reports increasing"
+                ],
+                "business": {
+                    "conversionAffected": True,
+                    "revenueImpact": "Revenue impact not yet quantified",
+                    "customerTrustRisk": "HIGH",
+                    "businessSeverity": "SEV-1"
+                }
+            },
             "participants": [
                 {
                     "id": "p-neha",
